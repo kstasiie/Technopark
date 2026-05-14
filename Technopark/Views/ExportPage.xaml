@@ -1,0 +1,100 @@
+﻿<Page x:Class="Technopark.Views.ExportPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      Background="#F9FAFB">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="28,24">
+
+            <TextBlock Text="Экспорт отчётов" FontSize="18"
+                       FontWeight="SemiBold" Margin="0,0,0,6"/>
+            <TextBlock Text="Выберите тип отчёта и формат экспорта"
+                       FontSize="13" Foreground="#6B7280" Margin="0,0,0,24"/>
+
+            <!-- Отчёт 1 — Список проектов -->
+            <Border Background="White" CornerRadius="8"
+                    BorderBrush="#E5E7EB" BorderThickness="1"
+                    Padding="20" Margin="0,0,0,12">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Text="Список проектов" FontSize="14"
+                                   FontWeight="SemiBold"/>
+                        <TextBlock Text="Все проекты с направлениями, наставниками и статусами"
+                                   FontSize="12" Foreground="#6B7280" Margin="0,4,0,0"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                        <Button Content="📊 Excel" Width="90" Height="34"
+                                Margin="0,0,8,0" BorderBrush="#D1D5DB"
+                                Background="White" FontSize="13" Cursor="Hand"
+                                Tag="Projects_Excel" Click="ExportBtn_Click"/>
+                        <Button Content="📝 Word" Width="90" Height="34"
+                                BorderBrush="#D1D5DB" Background="White"
+                                FontSize="13" Cursor="Hand"
+                                Tag="Projects_Word" Click="ExportBtn_Click"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- Отчёт 2 — Результаты конкурсов -->
+            <Border Background="White" CornerRadius="8"
+                    BorderBrush="#E5E7EB" BorderThickness="1"
+                    Padding="20" Margin="0,0,0,12">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Text="Результаты конкурсов" FontSize="14"
+                                   FontWeight="SemiBold"/>
+                        <TextBlock Text="Участие проектов в конкурсах и достигнутые результаты"
+                                   FontSize="12" Foreground="#6B7280" Margin="0,4,0,0"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                        <Button Content="📊 Excel" Width="90" Height="34"
+                                Margin="0,0,8,0" BorderBrush="#D1D5DB"
+                                Background="White" FontSize="13" Cursor="Hand"
+                                Tag="Contests_Excel" Click="ExportBtn_Click"/>
+                        <Button Content="📝 Word" Width="90" Height="34"
+                                BorderBrush="#D1D5DB" Background="White"
+                                FontSize="13" Cursor="Hand"
+                                Tag="Contests_Word" Click="ExportBtn_Click"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- Отчёт 3 — Наставники (только Admin) -->
+            <Border x:Name="MentorsCard" Background="White" CornerRadius="8"
+                    BorderBrush="#E5E7EB" BorderThickness="1"
+                    Padding="20" Margin="0,0,0,12">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Text="Наставники и их проекты" FontSize="14"
+                                   FontWeight="SemiBold"/>
+                        <TextBlock Text="Список наставников с количеством проектов и командами"
+                                   FontSize="12" Foreground="#6B7280" Margin="0,4,0,0"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                        <Button Content="📊 Excel" Width="90" Height="34"
+                                Margin="0,0,8,0" BorderBrush="#D1D5DB"
+                                Background="White" FontSize="13" Cursor="Hand"
+                                Tag="Mentors_Excel" Click="ExportBtn_Click"/>
+                        <Button Content="📝 Word" Width="90" Height="34"
+                                BorderBrush="#D1D5DB" Background="White"
+                                FontSize="13" Cursor="Hand"
+                                Tag="Mentors_Word" Click="ExportBtn_Click"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+        </StackPanel>
+    </ScrollViewer>
+</Page>

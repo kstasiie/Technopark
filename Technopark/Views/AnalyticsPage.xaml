@@ -1,0 +1,166 @@
+﻿<Page x:Class="Technopark.Views.AnalyticsPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      Background="#F9FAFB">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="28,24">
+
+            <TextBlock Text="Аналитика технопарка" FontSize="18"
+                       FontWeight="SemiBold" Margin="0,0,0,6"/>
+            <TextBlock Text="Сводные данные по проектной деятельности"
+                       FontSize="13" Foreground="#6B7280" Margin="0,0,0,24"/>
+
+            <!-- 1. Активность по направлениям -->
+            <Border Background="White" CornerRadius="8"
+                    BorderBrush="#E5E7EB" BorderThickness="1"
+                    Padding="24" Margin="0,0,0,16">
+                <StackPanel>
+                    <TextBlock Text="Активность по направлениям" FontSize="14"
+                               FontWeight="SemiBold" Margin="0,0,0,4"/>
+                    <TextBlock Text="Количество проектов в каждом квантуме"
+                               FontSize="12" Foreground="#6B7280" Margin="0,0,0,16"/>
+                    <ItemsControl x:Name="DirectionsBars">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Margin="0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="160"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="50"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="{Binding Label}"
+                                               FontSize="13" VerticalAlignment="Center"/>
+                                    <Border Grid.Column="1" Height="22"
+                                            Background="#F3F4F6" CornerRadius="4">
+                                        <Border HorizontalAlignment="Left"
+                                                Width="{Binding BarWidth}"
+                                                Background="#534AB7" CornerRadius="4"/>
+                                    </Border>
+                                    <TextBlock Grid.Column="2" Text="{Binding Value}"
+                                               FontSize="13" FontWeight="SemiBold"
+                                               HorizontalAlignment="Right"
+                                               VerticalAlignment="Center"/>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+
+            <!-- 2. Эффективность наставников -->
+            <Border Background="White" CornerRadius="8"
+                    BorderBrush="#E5E7EB" BorderThickness="1"
+                    Padding="24" Margin="0,0,0,16">
+                <StackPanel>
+                    <TextBlock Text="Эффективность наставников" FontSize="14"
+                               FontWeight="SemiBold" Margin="0,0,0,4"/>
+                    <TextBlock Text="Активность и результативность педагогов"
+                               FontSize="12" Foreground="#6B7280" Margin="0,0,0,16"/>
+                    <DataGrid x:Name="MentorsGrid" AutoGenerateColumns="False"
+                              IsReadOnly="True" GridLinesVisibility="Horizontal"
+                              HeadersVisibility="Column" BorderThickness="0"
+                              RowHeight="40" FontSize="13" Background="White"
+                              CanUserResizeRows="False">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Наставник"
+                                Binding="{Binding Name}" Width="*"/>
+                            <DataGridTextColumn Header="Направление"
+                                Binding="{Binding Direction}" Width="130"/>
+                            <DataGridTextColumn Header="Всего проектов"
+                                Binding="{Binding TotalProjects}" Width="120"/>
+                            <DataGridTextColumn Header="Завершено"
+                                Binding="{Binding CompletedProjects}" Width="100"/>
+                            <DataGridTextColumn Header="Призовых мест"
+                                Binding="{Binding PrizeCount}" Width="120"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </StackPanel>
+            </Border>
+
+            <!-- 3. Конкурсная активность -->
+            <Border Background="White" CornerRadius="8"
+                    BorderBrush="#E5E7EB" BorderThickness="1"
+                    Padding="24" Margin="0,0,0,16">
+                <StackPanel>
+                    <TextBlock Text="Конкурсная активность" FontSize="14"
+                               FontWeight="SemiBold" Margin="0,0,0,4"/>
+                    <TextBlock Text="Участия и призовые места по годам"
+                               FontSize="12" Foreground="#6B7280" Margin="0,0,0,16"/>
+                    <ItemsControl x:Name="ContestsBars">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Margin="0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="80"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="160"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="{Binding Label}"
+                                               FontSize="13" FontWeight="SemiBold"
+                                               VerticalAlignment="Center"/>
+                                    <Border Grid.Column="1" Height="22"
+                                            Background="#F3F4F6" CornerRadius="4">
+                                        <Grid>
+                                            <Border HorizontalAlignment="Left"
+                                                    Width="{Binding BarWidth}"
+                                                    Background="#0F6E56" CornerRadius="4"/>
+                                            <Border HorizontalAlignment="Left"
+                                                    Width="{Binding PrizeWidth}"
+                                                    Background="#FBBF24" CornerRadius="4"/>
+                                        </Grid>
+                                    </Border>
+                                    <TextBlock Grid.Column="2"
+                                               FontSize="12" Foreground="#6B7280"
+                                               VerticalAlignment="Center"
+                                               Margin="10,0,0,0">
+                                        <Run Text="{Binding TotalText}"/>
+                                        <Run Text=" • "/>
+                                        <Run Text="{Binding PrizesText}" Foreground="#854F0B"/>
+                                    </TextBlock>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                        <Border Width="12" Height="12" Background="#0F6E56" CornerRadius="2"/>
+                        <TextBlock Text="Участия" FontSize="12" Margin="6,0,16,0"
+                                   VerticalAlignment="Center"/>
+                        <Border Width="12" Height="12" Background="#FBBF24" CornerRadius="2"/>
+                        <TextBlock Text="Призовые места" FontSize="12" Margin="6,0,0,0"
+                                   VerticalAlignment="Center"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- 4. Динамика по годам -->
+            <Border Background="White" CornerRadius="8"
+                    BorderBrush="#E5E7EB" BorderThickness="1"
+                    Padding="24">
+                <StackPanel>
+                    <TextBlock Text="Динамика по годам" FontSize="14"
+                               FontWeight="SemiBold" Margin="0,0,0,4"/>
+                    <TextBlock Text="Новые проекты и команды за каждый год"
+                               FontSize="12" Foreground="#6B7280" Margin="0,0,0,16"/>
+                    <DataGrid x:Name="DynamicsGrid" AutoGenerateColumns="False"
+                              IsReadOnly="True" GridLinesVisibility="Horizontal"
+                              HeadersVisibility="Column" BorderThickness="0"
+                              RowHeight="40" FontSize="13" Background="White"
+                              CanUserResizeRows="False">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Год"
+                                Binding="{Binding Year}" Width="100"/>
+                            <DataGridTextColumn Header="Новых проектов"
+                                Binding="{Binding NewProjects}" Width="*"/>
+                            <DataGridTextColumn Header="Новых команд"
+                                Binding="{Binding NewTeams}" Width="*"/>
+                            <DataGridTextColumn Header="Активных проектов"
+                                Binding="{Binding ActiveProjects}" Width="*"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </StackPanel>
+            </Border>
+
+        </StackPanel>
+    </ScrollViewer>
+</Page>

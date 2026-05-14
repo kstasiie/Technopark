@@ -1,0 +1,176 @@
+﻿<Window x:Class="Technopark.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Технопарк — Кванториум" Height="650" Width="980"
+        WindowStartupLocation="CenterScreen" MinHeight="550" MinWidth="800">
+    <Window.Resources>
+        <Style x:Key="NavButton" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#D1D5DB"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Height" Value="40"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="Padding" Value="20,0,0,0"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" Background="{TemplateBinding Background}"
+                            BorderThickness="0">
+                            <ContentPresenter Margin="{TemplateBinding Padding}"
+                                          VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#2D2A6E"/>
+                                <Setter Property="Foreground" Value="White"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="210"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- БОКОВОЕ МЕНЮ -->
+        <Border Grid.Column="0" Background="#1E1B4B">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- Логотип -->
+                <StackPanel Grid.Row="0" Margin="20,24,20,20">
+                    <TextBlock Text="Технопарк" Foreground="White"
+                               FontSize="18" FontWeight="Bold"/>
+                    <TextBlock Text="Кванториум" Foreground="#9CA3AF" FontSize="12"/>
+                </StackPanel>
+
+                <!-- Навигация -->
+                <StackPanel Grid.Row="1" x:Name="NavPanel">
+
+                    <TextBlock Text="ГЛАВНОЕ" Foreground="#6B7280"
+               FontSize="10" Margin="20,8,0,4"/>
+                    <Button x:Name="BtnDashboard" Tag="Dashboard"
+            Style="{StaticResource NavButton}" Content="🏠  Главная"
+            Click="NavButton_Click"/>
+                    <Button x:Name="BtnProjects" Tag="Projects"
+            Style="{StaticResource NavButton}" Content="📁  Проекты"
+            Click="NavButton_Click"/>
+                    <Button x:Name="BtnContests" Tag="Contests"
+            Style="{StaticResource NavButton}" Content="🏆  Конкурсы"
+            Click="NavButton_Click"/>
+
+                    <!-- Наставник -->
+                    <TextBlock x:Name="SectionMyData" Text="МОИ ДАННЫЕ"
+               Foreground="#6B7280" FontSize="10" Margin="20,16,0,4"/>
+                    <Button x:Name="BtnMyProjects" Tag="MyProjects"
+            Style="{StaticResource NavButton}" Content="✏️  Мои проекты"
+            Click="NavButton_Click"/>
+                    <Button x:Name="BtnTeams" Tag="Teams"
+        Style="{StaticResource NavButton}" Content="👥  Команды"
+        Click="NavButton_Click"/>
+
+                    <!-- Отчёты — Admin и Mentor -->
+                    <TextBlock x:Name="SectionExport" Text="ОТЧЁТЫ"
+               Foreground="#6B7280" FontSize="10" Margin="20,16,0,4"/>
+                    <Button x:Name="BtnExport" Tag="Export"
+            Style="{StaticResource NavButton}" Content="📤  Экспорт"
+            Click="NavButton_Click"/>
+
+                    <!-- Только Admin -->
+                    <TextBlock x:Name="SectionAdmin" Text="УПРАВЛЕНИЕ"
+               Foreground="#6B7280" FontSize="10" Margin="20,16,0,4"/>
+                    <Button x:Name="BtnUsers" Tag="Users"
+            Style="{StaticResource NavButton}" Content="👥  Пользователи"
+            Click="NavButton_Click"/>
+                    <Button x:Name="BtnAnalytics" Tag="Analytics"
+            Style="{StaticResource NavButton}" Content="📊  Аналитика"
+            Click="NavButton_Click"/>
+
+                    <!-- Только Student -->
+                    <TextBlock x:Name="SectionPortfolio" Text="ПРОФИЛЬ"
+               Foreground="#6B7280" FontSize="10" Margin="20,16,0,4"/>
+                    <Button x:Name="BtnPortfolio" Tag="Portfolio"
+            Style="{StaticResource NavButton}" Content="🎓  Моё портфолио"
+            Click="NavButton_Click"/>
+
+                </StackPanel>
+
+                <!-- Пользователь внизу -->
+                <Border Grid.Row="2" BorderBrush="#374151" BorderThickness="0,1,0,0"
+                        Padding="16,12">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="36"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <Border Grid.Column="0" Width="36" Height="36"
+                                CornerRadius="18" Background="#534AB7">
+                            <TextBlock x:Name="AvatarText" Text="АД"
+                                       Foreground="White" FontSize="12"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"/>
+                        </Border>
+
+                        <StackPanel Grid.Column="1" Margin="10,0,0,0"
+                                    VerticalAlignment="Center">
+                            <TextBlock x:Name="UserNameText" Text="Пользователь"
+                                       Foreground="White" FontSize="12"
+                                       TextTrimming="CharacterEllipsis"/>
+                            <TextBlock x:Name="UserRoleText" Text="Роль"
+                                       Foreground="#9CA3AF" FontSize="11"/>
+                        </StackPanel>
+
+                        <Button Grid.Column="2" Content="⏻" Foreground="#9CA3AF"
+                                Background="Transparent" BorderThickness="0"
+                                FontSize="16" Cursor="Hand" ToolTip="Выйти"
+                                Click="LogoutBtn_Click"/>
+                    </Grid>
+                </Border>
+            </Grid>
+        </Border>
+
+        <!-- ОСНОВНОЙ КОНТЕНТ -->
+        <Grid Grid.Column="1" Background="#F9FAFB">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="56"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- Топбар -->
+            <Border Grid.Row="0" Background="White"
+        BorderBrush="#E5E7EB" BorderThickness="0,0,0,1">
+                <Grid Margin="24,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Button x:Name="BackButton" Grid.Column="0" Content="← Назад"
+                Background="Transparent" BorderThickness="0"
+                FontSize="13" Cursor="Hand" Padding="0,0,12,0"
+                VerticalAlignment="Center" Visibility="Collapsed"
+                Click="BackButton_Click"/>
+                    <TextBlock x:Name="PageTitle" Grid.Column="1" Text="Главная"
+                   FontSize="16" FontWeight="SemiBold"
+                   VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+
+            <!-- Страницы -->
+            <Frame x:Name="MainFrame" Grid.Row="1"
+                   NavigationUIVisibility="Hidden"/>
+        </Grid>
+    </Grid>
+</Window>
