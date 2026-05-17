@@ -10,7 +10,6 @@ namespace Technopark.Views
 {
     public partial class ProjectDetailsPage : Page
     {
-        private readonly AppDbContext _db = new();
         private readonly int _projectId;
         private Project? _project;
 
@@ -23,6 +22,7 @@ namespace Technopark.Views
 
         private async void DeleteBtn_Click(object sender, RoutedEventArgs e)
         {
+            using var db = new AppDbContext();
             if (_project == null || !CurrentSession.IsAdmin) return;
 
             var result = MessageBox.Show(
@@ -31,8 +31,8 @@ namespace Technopark.Views
 
             if (result != MessageBoxResult.Yes) return;
 
-            _db.Projects.Remove(_project);
-            await _db.SaveChangesAsync();
+            db.Projects.Remove(_project);
+            await db.SaveChangesAsync();
 
             // Возврат назад
             if (NavigationService?.CanGoBack == true)
@@ -41,7 +41,8 @@ namespace Technopark.Views
 
         private async Task LoadAsync()
         {
-            _project = await _db.Projects
+            using var db = new AppDbContext();
+            _project = await db.Projects
                 .Include(p => p.Direction)
                 .Include(p => p.Status)
                 .Include(p => p.Mentor)
@@ -83,6 +84,7 @@ namespace Technopark.Views
             // Конкурсы
             var contests = _project.ContestParticipations.Select(cp => new
             {
+                ContestId = cp.ContestId,
                 ContestName = cp.Contest?.Name ?? "",
                 Level = cp.Contest?.Level?.Name ?? "",
                 Result = cp.Result?.Name ?? "—",
@@ -94,22 +96,38 @@ namespace Technopark.Views
             bool canEdit = CurrentSession.IsAdmin;
             if (CurrentSession.IsMentor)
             {
-                var mentor = await _db.MentorProfiles
+                var mentor = await db.MentorProfiles
                     .FirstOrDefaultAsync(m => m.UserId == CurrentSession.UserId);
                 canEdit = mentor != null && _project.MentorId == mentor.Id;
             }
             EditBtn.Visibility = canEdit ? Visibility.Visible : Visibility.Collapsed;
             DeleteBtn.Visibility = CurrentSession.IsAdmin
                 ? Visibility.Visible : Visibility.Collapsed;
+            AddToContestBtn.Visibility = canEdit
+                ? Visibility.Visible : Visibility.Collapsed;
         }
 
+        private async void AddToContestBtn_Click(object sender, RoutedEventArgs e)
+        {
+            if (_project == null) return;
+            var dialog = new Dialogs.AddToContestDialog(_project.Id);
+            if (dialog.ShowDialog() == true)
+                await LoadAsync();
+        }
         private async void EditBtn_Click(object sender, RoutedEventArgs e)
         {
             if (_project == null) return;
             var dialog = new Dialogs.ProjectDialog(_project, true);
             if (dialog.ShowDialog() == true) await LoadAsync();
         }
-
+        private void ContestsGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (ContestsGrid.SelectedItem is { } item)
+            {
+                var contestId = (int)item.GetType().GetProperty("ContestId")!.GetValue(item)!;
+                NavigationService?.Navigate(new ContestDetailsPage(contestId));
+            }
+        }
         private void MentorLink_Click(object sender, MouseButtonEventArgs e)
         {
             if (_project?.MentorId > 0)

@@ -9,7 +9,6 @@ namespace Technopark.Dialogs
 {
     public partial class ProjectDialog : Window
     {
-        private readonly AppDbContext _db = new();
         private readonly Project? _editProject;
         private readonly bool _canEdit;
 
@@ -23,24 +22,25 @@ namespace Technopark.Dialogs
 
         private async Task InitAsync()
         {
+            using var db = new AppDbContext();
             // Загружаем справочники
-            var directions = await _db.Directions.OrderBy(d => d.Name).ToListAsync();
+            var directions = await db.Directions.OrderBy(d => d.Name).ToListAsync();
             DirectionBox.ItemsSource = directions;
             DirectionBox.DisplayMemberPath = "Name";
             DirectionBox.SelectedValuePath = "Id";
 
-            var statuses = await _db.ProjectStatuses.ToListAsync();
+            var statuses = await db.ProjectStatuses.ToListAsync();
             StatusBox.ItemsSource = statuses;
             StatusBox.DisplayMemberPath = "Name";
             StatusBox.SelectedValuePath = "Id";
 
-            var mentors = await _db.MentorProfiles
+            var mentors = await db.MentorProfiles
                 .OrderBy(m => m.LastName).ToListAsync();
             MentorBox.ItemsSource = mentors;
             MentorBox.DisplayMemberPath = "FullName";
             MentorBox.SelectedValuePath = "Id";
 
-            var teams = await _db.Teams.OrderBy(t => t.Name).ToListAsync();
+            var teams = await db.Teams.OrderBy(t => t.Name).ToListAsync();
             TeamBox.ItemsSource = teams;
             TeamBox.DisplayMemberPath = "Name";
             TeamBox.SelectedValuePath = "Id";
@@ -65,7 +65,7 @@ namespace Technopark.Dialogs
                 // Если наставник — сразу выбираем его
                 if (CurrentSession.IsMentor)
                 {
-                    var mentor = await _db.MentorProfiles
+                    var mentor = await db.MentorProfiles
                         .FirstOrDefaultAsync(m => m.UserId == CurrentSession.UserId);
                     if (mentor != null)
                     {
@@ -105,15 +105,16 @@ namespace Technopark.Dialogs
                 return;
             }
 
+            using var db = new AppDbContext();
             var team = new Team
             {
                 Name = NewTeamNameBox.Text.Trim(),
                 FormationYear = DateTime.Now.Year
             };
-            _db.Teams.Add(team);
-            await _db.SaveChangesAsync();
+            db.Teams.Add(team);
+            await db.SaveChangesAsync();
 
-            var teams = await _db.Teams.OrderBy(t => t.Name).ToListAsync();
+            var teams = await db.Teams.OrderBy(t => t.Name).ToListAsync();
             TeamBox.ItemsSource = teams;
             TeamBox.SelectedValue = team.Id;
 
@@ -123,6 +124,8 @@ namespace Technopark.Dialogs
 
         private async void SaveBtn_Click(object sender, RoutedEventArgs e)
         {
+            using var db = new AppDbContext();
+
             if (string.IsNullOrWhiteSpace(NameBox.Text) ||
                 DirectionBox.SelectedValue == null ||
                 StatusBox.SelectedValue == null ||
@@ -147,22 +150,25 @@ namespace Technopark.Dialogs
                     StartDate = StartDatePicker.SelectedDate.Value,
                     PlannedEndDate = EndDatePicker.SelectedDate
                 };
-                _db.Projects.Add(project);
+                db.Projects.Add(project);
             }
             else
             {
-                _editProject.Name = NameBox.Text.Trim();
-                _editProject.Description = DescriptionBox.Text.Trim();
-                _editProject.DirectionId = (int)DirectionBox.SelectedValue;
-                _editProject.StatusId = (int)StatusBox.SelectedValue;
-                _editProject.MentorId = (int)MentorBox.SelectedValue;
-                _editProject.TeamId = (int)TeamBox.SelectedValue;
-                _editProject.StartDate = StartDatePicker.SelectedDate.Value;
-                _editProject.PlannedEndDate = EndDatePicker.SelectedDate;
-                _db.Entry(_editProject).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+                // Загружаем свежий проект в свой контекст
+                var project = await db.Projects.FindAsync(_editProject.Id);
+                if (project == null) return;
+
+                project.Name = NameBox.Text.Trim();
+                project.Description = DescriptionBox.Text.Trim();
+                project.DirectionId = (int)DirectionBox.SelectedValue;
+                project.StatusId = (int)StatusBox.SelectedValue;
+                project.MentorId = (int)MentorBox.SelectedValue;
+                project.TeamId = (int)TeamBox.SelectedValue;
+                project.StartDate = StartDatePicker.SelectedDate.Value;
+                project.PlannedEndDate = EndDatePicker.SelectedDate;
             }
 
-            await _db.SaveChangesAsync();
+            await db.SaveChangesAsync();
             DialogResult = true;
             Close();
         }

@@ -61,7 +61,7 @@
                         Width="100"/>
                     <DataGridTextColumn Header="Статус"
                         Binding="{Binding Status.Name}" Width="120"/>
-                    <DataGridTemplateColumn Width="80">
+                    <DataGridTemplateColumn x:Name="ActionsColumn" Width="80">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
                                 <StackPanel Orientation="Horizontal">

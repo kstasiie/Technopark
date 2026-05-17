@@ -46,7 +46,7 @@
                         Binding="{Binding MemberCount}" Width="100"/>
                     <DataGridTextColumn Header="Проектов"
                         Binding="{Binding ProjectCount}" Width="100"/>
-                    <DataGridTemplateColumn Width="80">
+                    <DataGridTemplateColumn x:Name="ActionsColumn" Width="80">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
                                 <StackPanel Orientation="Horizontal">

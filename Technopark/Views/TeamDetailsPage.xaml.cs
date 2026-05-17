@@ -10,7 +10,6 @@ namespace Technopark.Views
 {
     public partial class TeamDetailsPage : Page
     {
-        private readonly AppDbContext _db = new();
         private readonly int _teamId;
         private Team? _team;
 
@@ -23,7 +22,8 @@ namespace Technopark.Views
 
         private async Task LoadAsync()
         {
-            _team = await _db.Teams
+            using var db = new AppDbContext();
+            _team = await db.Teams
                 .Include(t => t.Members).ThenInclude(m => m.Student)
                 .Include(t => t.Members).ThenInclude(m => m.Role)
                 .Include(t => t.Projects).ThenInclude(p => p.Direction)
@@ -57,12 +57,13 @@ namespace Technopark.Views
 
         private async void DeleteBtn_Click(object sender, RoutedEventArgs e)
         {
+            using var db = new AppDbContext();
             if (_team == null) return;
             var result = MessageBox.Show($"Удалить команду «{_team.Name}»?",
                 "Подтверждение", MessageBoxButton.YesNo, MessageBoxImage.Warning);
             if (result != MessageBoxResult.Yes) return;
-            _db.Teams.Remove(_team);
-            await _db.SaveChangesAsync();
+            db.Teams.Remove(_team);
+            await db.SaveChangesAsync();
             if (NavigationService?.CanGoBack == true) NavigationService.GoBack();
         }
 

@@ -10,7 +10,6 @@ namespace Technopark.Views
 {
     public partial class UsersPage : Page
     {
-        private readonly AppDbContext _db = new();
         private List<User> _allUsers = [];
         private bool _searchFocused = false;
 
@@ -18,12 +17,16 @@ namespace Technopark.Views
         {
             InitializeComponent();
             Loaded += async (s, e) => await LoadUsersAsync();
+
+            if (!CurrentSession.IsAdmin)
+                ActionsColumn.Visibility = Visibility.Collapsed;
         }
 
         private async Task LoadUsersAsync()
         {
-            _allUsers = await _db.Users
-                .Include(u => u.MentorProfile)
+            using var db = new AppDbContext();
+            _allUsers = await db.Users
+                .Include(u => u.MentorProfile).ThenInclude(m => m!.Direction)
                 .Include(u => u.StudentProfile)
                 .OrderBy(u => u.Login)
                 .ToListAsync();
@@ -130,9 +133,10 @@ namespace Technopark.Views
         }
         private async void EditUser_Click(object sender, RoutedEventArgs e)
         {
+            using var db = new AppDbContext();
             if (sender is not Button btn || btn.Tag is not int userId) return;
 
-            var user = await _db.Users
+            var user = await db.Users
                 .Include(u => u.MentorProfile)
                 .Include(u => u.StudentProfile)
                 .FirstOrDefaultAsync(u => u.Id == userId);
@@ -146,6 +150,7 @@ namespace Technopark.Views
 
         private async void DeleteUser_Click(object sender, RoutedEventArgs e)
         {
+            using var db = new AppDbContext();
             if (sender is not Button btn || btn.Tag is not int userId) return;
 
             if (userId == CurrentSession.UserId)
@@ -154,7 +159,7 @@ namespace Technopark.Views
                 return;
             }
 
-            var user = await _db.Users.FindAsync(userId);
+            var user = await db.Users.FindAsync(userId);
             if (user == null) return;
 
             var result = MessageBox.Show(
@@ -163,24 +168,25 @@ namespace Technopark.Views
 
             if (result != MessageBoxResult.Yes) return;
 
-            _db.Users.Remove(user);
-            await _db.SaveChangesAsync();
+            db.Users.Remove(user);
+            await db.SaveChangesAsync();
             await LoadUsersAsync();
         }
         private async void UsersGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
+            using var db = new AppDbContext();
             if (UsersGrid.SelectedItem is not UserViewModel vm) return;
 
             if (vm.Role == "Mentor")
             {
-                var mentor = await _db.MentorProfiles
+                var mentor = await db.MentorProfiles
                     .FirstOrDefaultAsync(m => m.UserId == vm.UserId);
                 if (mentor != null)
                     NavigationService?.Navigate(new MentorDetailsPage(mentor.Id));
             }
             else if (vm.Role == "Student")
             {
-                var student = await _db.StudentProfiles
+                var student = await db.StudentProfiles
                     .FirstOrDefaultAsync(s => s.UserId == vm.UserId);
                 if (student != null)
                     NavigationService?.Navigate(new StudentDetailsPage(student.Id));

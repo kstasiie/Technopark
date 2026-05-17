@@ -9,27 +9,28 @@ namespace Technopark.Dialogs
 {
     public partial class ContestDialog : Window
     {
-        private readonly AppDbContext _db = new();
-        private readonly Contest? _editContest;
+        private readonly int? _editContestId;
         private readonly bool _canEdit;
         private ObservableCollection<ParticipationRow> _participations = [];
 
         public ContestDialog(Contest? contest = null, bool canEdit = true)
         {
             InitializeComponent();
-            _editContest = contest;
+            _editContestId = contest?.Id;
             _canEdit = canEdit;
             Loaded += async (s, e) => await InitAsync();
         }
 
         private async Task InitAsync()
         {
-            var levels = await _db.ContestLevels.ToListAsync();
+            using var db = new AppDbContext();
+
+            var levels = await db.ContestLevels.ToListAsync();
             LevelBox.ItemsSource = levels;
             LevelBox.DisplayMemberPath = "Name";
             LevelBox.SelectedValuePath = "Id";
 
-            var projects = await _db.Projects
+            var projects = await db.Projects
                 .Include(p => p.Direction)
                 .OrderBy(p => p.Name)
                 .ToListAsync();
@@ -37,37 +38,40 @@ namespace Technopark.Dialogs
             ProjectBox.DisplayMemberPath = "Name";
             ProjectBox.SelectedValuePath = "Id";
 
-            var results = await _db.ParticipationResults.ToListAsync();
-
-            // Настраиваем колонку результатов
+            var results = await db.ParticipationResults.ToListAsync();
             var resultCol = (DataGridComboBoxColumn)ParticipationsGrid.Columns[1];
             resultCol.ItemsSource = results;
             resultCol.DisplayMemberPath = "Name";
             resultCol.SelectedValuePath = "Id";
 
-            if (_editContest != null)
+            if (_editContestId != null)
             {
-                TitleText.Text = "Редактировать конкурс";
-                NameBox.Text = _editContest.Name;
-                OrganizerBox.Text = _editContest.Organizer;
-                LevelBox.SelectedValue = _editContest.LevelId;
-                DatePicker.SelectedDate = _editContest.Date;
+                var contest = await db.Contests
+                    .FirstOrDefaultAsync(c => c.Id == _editContestId);
 
-                var participations = await _db.ContestParticipations
-                    .Include(cp => cp.Project)
-                    .Include(cp => cp.Result)
-                    .Where(cp => cp.ContestId == _editContest.Id)
-                    .ToListAsync();
+                if (contest != null)
+                {
+                    TitleText.Text = "Редактировать конкурс";
+                    NameBox.Text = contest.Name;
+                    OrganizerBox.Text = contest.Organizer;
+                    LevelBox.SelectedValue = contest.LevelId;
+                    DatePicker.SelectedDate = contest.Date;
 
-                _participations = new ObservableCollection<ParticipationRow>(
-                    participations.Select(cp => new ParticipationRow
-                    {
-                        Id = cp.Id,
-                        ProjectId = cp.ProjectId,
-                        ProjectName = cp.Project?.Name ?? "",
-                        ResultId = cp.ResultId,
-                        Place = cp.Place
-                    }));
+                    var participations = await db.ContestParticipations
+                        .Include(cp => cp.Project)
+                        .Where(cp => cp.ContestId == _editContestId)
+                        .ToListAsync();
+
+                    _participations = new ObservableCollection<ParticipationRow>(
+                        participations.Select(cp => new ParticipationRow
+                        {
+                            Id = cp.Id,
+                            ProjectId = cp.ProjectId,
+                            ProjectName = cp.Project?.Name ?? "",
+                            ResultId = cp.ResultId,
+                            Place = cp.Place
+                        }));
+                }
             }
             else
             {
@@ -118,51 +122,60 @@ namespace Technopark.Dialogs
                 return;
             }
 
-            Contest contest;
-            if (_editContest == null)
+            using var db = new AppDbContext();
+
+            int contestId;
+            if (_editContestId == null)
             {
-                contest = new Contest
+                var contest = new Contest
                 {
                     Name = NameBox.Text.Trim(),
                     Organizer = OrganizerBox.Text.Trim(),
                     LevelId = (int)LevelBox.SelectedValue,
                     Date = DatePicker.SelectedDate.Value
                 };
-                _db.Contests.Add(contest);
-                await _db.SaveChangesAsync();
+                db.Contests.Add(contest);
+                await db.SaveChangesAsync();
+                contestId = contest.Id;
             }
             else
             {
-                contest = _editContest;
-                contest.Name = NameBox.Text.Trim();
-                contest.Organizer = OrganizerBox.Text.Trim();
-                contest.LevelId = (int)LevelBox.SelectedValue;
-                contest.Date = DatePicker.SelectedDate.Value;
-                _db.Contests.Update(contest);
-                await _db.SaveChangesAsync();
+                contestId = _editContestId.Value;
+
+                // Создаём "заглушку" с Id и говорим EF обновить только нужные поля
+                var contest = new Contest
+                {
+                    Id = contestId,
+                    Name = NameBox.Text.Trim(),
+                    Organizer = OrganizerBox.Text.Trim(),
+                    LevelId = (int)LevelBox.SelectedValue,
+                    Date = DatePicker.SelectedDate.Value
+                };
+                db.Entry(contest).State = EntityState.Modified;
+                await db.SaveChangesAsync();
 
                 // Удаляем старые участия
-                var old = await _db.ContestParticipations
-                    .Where(cp => cp.ContestId == contest.Id)
+                var old = await db.ContestParticipations
+                    .Where(cp => cp.ContestId == contestId)
                     .ToListAsync();
-                _db.ContestParticipations.RemoveRange(old);
-                await _db.SaveChangesAsync();
+                db.ContestParticipations.RemoveRange(old);
+                await db.SaveChangesAsync();
             }
 
-            // Сохраняем участия
+            // Добавляем актуальный список участий
             foreach (var row in _participations)
             {
-                _db.ContestParticipations.Add(new ContestParticipation
+                db.ContestParticipations.Add(new ContestParticipation
                 {
-                    ContestId = contest.Id,
+                    ContestId = contestId,
                     ProjectId = row.ProjectId,
                     ResultId = row.ResultId,
                     Place = row.Place,
                     ApplicationDate = DateTime.Today
                 });
             }
+            await db.SaveChangesAsync();
 
-            await _db.SaveChangesAsync();
             DialogResult = true;
             Close();
         }

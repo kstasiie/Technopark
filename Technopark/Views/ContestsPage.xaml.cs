@@ -10,7 +10,6 @@ namespace Technopark.Views
 {
     public partial class ContestsPage : Page
     {
-        private readonly AppDbContext _db = new();
         private List<ContestViewModel> _allContests = [];
         private bool _searchFocused = false;
 
@@ -27,11 +26,15 @@ namespace Technopark.Views
 
             if (CurrentSession.IsStudent)
                 AddContestBtn.Visibility = Visibility.Collapsed;
+
+            if (!CurrentSession.IsAdmin)
+                ActionsColumn.Visibility = Visibility.Collapsed;
         }
 
         private async Task LoadFiltersAsync()
         {
-            var levels = await _db.ContestLevels.ToListAsync();
+            using var db = new AppDbContext();
+            var levels = await db.ContestLevels.ToListAsync();
             var all = new List<object> { new { Id = 0, Name = "Все уровни" } };
             all.AddRange(levels.Cast<object>());
             LevelFilter.ItemsSource = all;
@@ -42,7 +45,8 @@ namespace Technopark.Views
 
         private async Task LoadContestsAsync()
         {
-            var contests = await _db.Contests
+            using var db = new AppDbContext();
+            var contests = await db.Contests
                 .Include(c => c.Level)
                 .Include(c => c.Participations)
                 .OrderByDescending(c => c.Date)
@@ -145,6 +149,7 @@ namespace Technopark.Views
 
         private async void DeleteContest_Click(object sender, RoutedEventArgs e)
         {
+            using var db = new AppDbContext();
             if (sender is not Button btn || btn.Tag is not ContestViewModel vm) return;
             if (!CurrentSession.IsAdmin) return;
 
@@ -154,11 +159,11 @@ namespace Technopark.Views
 
             if (result != MessageBoxResult.Yes) return;
 
-            var contest = await _db.Contests.FindAsync(vm.Contest.Id);
+            var contest = await db.Contests.FindAsync(vm.Contest.Id);
             if (contest != null)
             {
-                _db.Contests.Remove(contest);
-                await _db.SaveChangesAsync();
+                db.Contests.Remove(contest);
+                await db.SaveChangesAsync();
                 await LoadContestsAsync();
             }
         }

@@ -9,7 +9,6 @@ namespace Technopark.Views
 {
     public partial class PortfolioPage : Page
     {
-        private readonly AppDbContext _db = new();
 
         public PortfolioPage()
         {
@@ -19,7 +18,8 @@ namespace Technopark.Views
 
         private async Task LoadAsync()
         {
-            var student = await _db.StudentProfiles
+            using var db = new AppDbContext();
+            var student = await db.StudentProfiles
                 .FirstOrDefaultAsync(s => s.UserId == CurrentSession.UserId);
 
             if (student == null) return;
@@ -30,7 +30,7 @@ namespace Technopark.Views
                 ? $"{student.LastName[0]}{student.FirstName[0]}" : "?";
 
             // Проекты участника
-            var memberships = await _db.TeamMembers
+            var memberships = await db.TeamMembers
                 .Include(tm => tm.Team).ThenInclude(t => t.Projects)
                     .ThenInclude(p => p.Direction)
                 .Include(tm => tm.Team).ThenInclude(t => t.Projects)
@@ -58,7 +58,7 @@ namespace Technopark.Views
                 .SelectMany(tm => tm.Team.Projects.Select(p => p.Id))
                 .Distinct().ToList();
 
-            var participations = await _db.ContestParticipations
+            var participations = await db.ContestParticipations
                 .Include(cp => cp.Contest).ThenInclude(c => c.Level)
                 .Include(cp => cp.Project)
                 .Include(cp => cp.Result)

@@ -9,51 +9,56 @@ namespace Technopark.Dialogs
 {
     public partial class TeamDialog : Window
     {
-        private readonly AppDbContext _db = new();
-        private readonly Team? _editTeam;
+        private readonly int? _editTeamId;
         private readonly bool _canEdit;
         private ObservableCollection<MemberRow> _members = [];
 
         public TeamDialog(Team? team = null, bool canEdit = true)
         {
             InitializeComponent();
-            _editTeam = team;
+            _editTeamId = team?.Id;
             _canEdit = canEdit;
             Loaded += async (s, e) => await InitAsync();
         }
 
         private async Task InitAsync()
         {
-            // Студенты
-            var students = await _db.StudentProfiles
-                .OrderBy(s => s.LastName)
-                .ToListAsync();
+            using var db = new AppDbContext();
+
+            var students = await db.StudentProfiles
+                .OrderBy(s => s.LastName).ToListAsync();
             StudentBox.ItemsSource = students;
             StudentBox.DisplayMemberPath = "FullName";
             StudentBox.SelectedValuePath = "Id";
 
-            // Роли
-            var roles = await _db.ProjectRoles.ToListAsync();
+            var roles = await db.ProjectRoles.ToListAsync();
             RoleBox.ItemsSource = roles;
             RoleBox.DisplayMemberPath = "Name";
             RoleBox.SelectedValuePath = "Id";
             RoleBox.SelectedIndex = 0;
 
-            if (_editTeam != null)
+            if (_editTeamId != null)
             {
-                TitleText.Text = "Редактировать команду";
-                NameBox.Text = _editTeam.Name;
-                YearBox.Text = _editTeam.FormationYear.ToString();
+                var team = await db.Teams
+                    .Include(t => t.Members).ThenInclude(m => m.Student)
+                    .Include(t => t.Members).ThenInclude(m => m.Role)
+                    .FirstOrDefaultAsync(t => t.Id == _editTeamId);
 
-                _members = new ObservableCollection<MemberRow>(
-                    _editTeam.Members.Select(m => new MemberRow
-                    {
-                        MemberId = m.Id,
-                        StudentId = m.StudentId,
-                        StudentName = m.Student?.FullName ?? "",
-                        RoleId = m.RoleId,
-                        RoleName = m.Role?.Name ?? ""
-                    }));
+                if (team != null)
+                {
+                    TitleText.Text = "Редактировать команду";
+                    NameBox.Text = team.Name;
+                    YearBox.Text = team.FormationYear.ToString();
+
+                    _members = new ObservableCollection<MemberRow>(
+                        team.Members.Select(m => new MemberRow
+                        {
+                            StudentId = m.StudentId,
+                            StudentName = m.Student?.FullName ?? "",
+                            RoleId = m.RoleId,
+                            RoleName = m.Role?.Name ?? ""
+                        }));
+                }
             }
             else
             {
@@ -86,7 +91,7 @@ namespace Technopark.Dialogs
             }
 
             var student = StudentBox.SelectedItem as StudentProfile;
-            var role = (RoleBox.SelectedItem as ProjectRole);
+            var role = RoleBox.SelectedItem as ProjectRole;
 
             _members.Add(new MemberRow
             {
@@ -120,19 +125,21 @@ namespace Technopark.Dialogs
                 return;
             }
 
-            if (_editTeam == null)
+            using var db = new AppDbContext();
+
+            if (_editTeamId == null)
             {
                 var team = new Team
                 {
                     Name = NameBox.Text.Trim(),
                     FormationYear = year
                 };
-                _db.Teams.Add(team);
-                await _db.SaveChangesAsync();
+                db.Teams.Add(team);
+                await db.SaveChangesAsync();
 
                 foreach (var row in _members)
                 {
-                    _db.TeamMembers.Add(new TeamMember
+                    db.TeamMembers.Add(new TeamMember
                     {
                         TeamId = team.Id,
                         StudentId = row.StudentId,
@@ -140,33 +147,42 @@ namespace Technopark.Dialogs
                         InclusionDate = DateTime.Today
                     });
                 }
+                await db.SaveChangesAsync();
             }
             else
             {
-                _editTeam.Name = NameBox.Text.Trim();
-                _editTeam.FormationYear = year;
-                _db.Entry(_editTeam).State =
-                    Microsoft.EntityFrameworkCore.EntityState.Modified;
+                // Загружаем команду свежим запросом в наш контекст
+                var team = await db.Teams
+                    .Include(t => t.Members)
+                    .FirstOrDefaultAsync(t => t.Id == _editTeamId);
 
-                // Удаляем старых участников
-                var old = await _db.TeamMembers
-                    .Where(tm => tm.TeamId == _editTeam.Id)
-                    .ToListAsync();
-                _db.TeamMembers.RemoveRange(old);
+                if (team == null)
+                {
+                    MessageBox.Show("Команда не найдена");
+                    return;
+                }
 
+                team.Name = NameBox.Text.Trim();
+                team.FormationYear = year;
+
+                // Удаляем всех старых участников
+                db.TeamMembers.RemoveRange(team.Members);
+                await db.SaveChangesAsync();
+
+                // Добавляем новых
                 foreach (var row in _members)
                 {
-                    _db.TeamMembers.Add(new TeamMember
+                    db.TeamMembers.Add(new TeamMember
                     {
-                        TeamId = _editTeam.Id,
+                        TeamId = team.Id,
                         StudentId = row.StudentId,
                         RoleId = row.RoleId,
                         InclusionDate = DateTime.Today
                     });
                 }
+                await db.SaveChangesAsync();
             }
 
-            await _db.SaveChangesAsync();
             DialogResult = true;
             Close();
         }
@@ -180,7 +196,6 @@ namespace Technopark.Dialogs
 
     public class MemberRow
     {
-        public int MemberId { get; set; }
         public int StudentId { get; set; }
         public string StudentName { get; set; } = "";
         public int RoleId { get; set; }

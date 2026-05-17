@@ -14,7 +14,6 @@ namespace Technopark.Views
 {
     public partial class ExportPage : Page
     {
-        private readonly AppDbContext _db = new();
 
         public ExportPage()
         {
@@ -129,12 +128,14 @@ namespace Technopark.Views
 
         private async Task FillMentorsExcel(IXLWorksheet ws)
         {
+            using var db = new AppDbContext();
+
             ws.Cell(1, 1).Value = "ФИО наставника";
             ws.Cell(1, 2).Value = "Должность";
             ws.Cell(1, 3).Value = "Направление";
             ws.Cell(1, 4).Value = "Кол-во проектов";
 
-            var mentors = await _db.MentorProfiles
+            var mentors = await db.MentorProfiles
                 .Include(m => m.Direction)
                 .Include(m => m.Projects)
                 .OrderBy(m => m.LastName)
@@ -217,7 +218,8 @@ namespace Technopark.Views
 
         private async Task FillMentorsWord(Body body)
         {
-            var mentors = await _db.MentorProfiles
+            using var db = new AppDbContext();
+            var mentors = await db.MentorProfiles
                 .Include(m => m.Direction)
                 .Include(m => m.Projects)
                 .OrderBy(m => m.LastName)
@@ -307,7 +309,8 @@ namespace Technopark.Views
         // Получение данных с учётом роли
         private async Task<List<Models.Project>> GetProjectsAsync()
         {
-            var query = _db.Projects
+            using var db = new AppDbContext();
+            var query = db.Projects
                 .Include(p => p.Direction)
                 .Include(p => p.Mentor)
                 .Include(p => p.Team)
@@ -316,7 +319,7 @@ namespace Technopark.Views
 
             if (CurrentSession.IsMentor)
             {
-                var mentor = await _db.MentorProfiles
+                var mentor = await db.MentorProfiles
                     .FirstOrDefaultAsync(m => m.UserId == CurrentSession.UserId);
                 if (mentor != null)
                     query = query.Where(p => p.MentorId == mentor.Id);
@@ -327,7 +330,9 @@ namespace Technopark.Views
 
         private async Task<List<Models.ContestParticipation>> GetParticipationsAsync()
         {
-            var query = _db.ContestParticipations
+            using var db = new AppDbContext();
+
+            var query = db.ContestParticipations
                 .Include(cp => cp.Contest).ThenInclude(c => c!.Level)
                 .Include(cp => cp.Project)
                 .Include(cp => cp.Result)
@@ -335,7 +340,7 @@ namespace Technopark.Views
 
             if (CurrentSession.IsMentor)
             {
-                var mentor = await _db.MentorProfiles
+                var mentor = await db.MentorProfiles
                     .FirstOrDefaultAsync(m => m.UserId == CurrentSession.UserId);
                 if (mentor != null)
                     query = query.Where(cp => cp.Project!.MentorId == mentor.Id);

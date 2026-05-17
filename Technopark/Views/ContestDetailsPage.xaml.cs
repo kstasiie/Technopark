@@ -9,7 +9,6 @@ namespace Technopark.Views
 {
     public partial class ContestDetailsPage : Page
     {
-        private readonly AppDbContext _db = new();
         private readonly int _contestId;
         private Contest? _contest;
 
@@ -22,7 +21,8 @@ namespace Technopark.Views
 
         private async Task LoadAsync()
         {
-            _contest = await _db.Contests
+            using var db = new AppDbContext();
+            _contest = await db.Contests
                 .Include(c => c.Level)
                 .Include(c => c.Participations).ThenInclude(p => p.Project).ThenInclude(p => p!.Mentor)
                 .Include(c => c.Participations).ThenInclude(p => p.Result)
@@ -57,12 +57,13 @@ namespace Technopark.Views
 
         private async void DeleteBtn_Click(object sender, RoutedEventArgs e)
         {
+            using var db = new AppDbContext();
             if (_contest == null) return;
             var result = MessageBox.Show($"Удалить конкурс «{_contest.Name}»?",
                 "Подтверждение", MessageBoxButton.YesNo, MessageBoxImage.Warning);
             if (result != MessageBoxResult.Yes) return;
-            _db.Contests.Remove(_contest);
-            await _db.SaveChangesAsync();
+            db.Contests.Remove(_contest);
+            await db.SaveChangesAsync();
             if (NavigationService?.CanGoBack == true) NavigationService.GoBack();
         }
 

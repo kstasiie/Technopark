@@ -9,7 +9,6 @@ namespace Technopark.Views
 {
     public partial class MentorDetailsPage : Page
     {
-        private readonly AppDbContext _db = new();
         private readonly int _mentorId;
         private MentorProfile? _mentor;
 
@@ -22,7 +21,8 @@ namespace Technopark.Views
 
         private async Task LoadAsync()
         {
-            _mentor = await _db.MentorProfiles
+            using var db = new AppDbContext();
+            _mentor = await db.MentorProfiles
                 .Include(m => m.Direction)
                 .Include(m => m.User)
                 .Include(m => m.Projects).ThenInclude(p => p.Direction)
@@ -51,14 +51,18 @@ namespace Technopark.Views
             }
 
             // Кнопки только для Admin
-            EditBtn.Visibility = CurrentSession.IsAdmin ? Visibility.Visible : Visibility.Collapsed;
-            DeleteBtn.Visibility = CurrentSession.IsAdmin ? Visibility.Visible : Visibility.Collapsed;
+            bool isOwnProfile = _mentor.UserId == CurrentSession.UserId;
+            EditBtn.Visibility = (CurrentSession.IsAdmin || isOwnProfile)
+                ? Visibility.Visible : Visibility.Collapsed;
+            DeleteBtn.Visibility = (CurrentSession.IsAdmin && !isOwnProfile)
+                ? Visibility.Visible : Visibility.Collapsed;
         }
 
         private async void EditBtn_Click(object sender, RoutedEventArgs e)
         {
+            using var db = new AppDbContext();
             if (_mentor?.User == null) return;
-            var user = await _db.Users
+            var user = await db.Users
                 .Include(u => u.MentorProfile)
                 .FirstOrDefaultAsync(u => u.Id == _mentor.UserId);
             if (user == null) return;
@@ -68,14 +72,15 @@ namespace Technopark.Views
 
         private async void DeleteBtn_Click(object sender, RoutedEventArgs e)
         {
+            using var db = new AppDbContext();
             if (_mentor == null) return;
             var result = MessageBox.Show($"Удалить наставника «{_mentor.FullName}»?",
                 "Подтверждение", MessageBoxButton.YesNo, MessageBoxImage.Warning);
             if (result != MessageBoxResult.Yes) return;
 
-            var user = await _db.Users.FindAsync(_mentor.UserId);
-            if (user != null) _db.Users.Remove(user);
-            await _db.SaveChangesAsync();
+            var user = await db.Users.FindAsync(_mentor.UserId);
+            if (user != null) db.Users.Remove(user);
+            await db.SaveChangesAsync();
             if (NavigationService?.CanGoBack == true) NavigationService.GoBack();
         }
 

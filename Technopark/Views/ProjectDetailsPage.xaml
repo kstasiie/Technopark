@@ -142,27 +142,39 @@
 
             <!-- Участие в конкурсах -->
             <Border Grid.Row="3" Background="White" CornerRadius="8"
-                    BorderBrush="#E5E7EB" BorderThickness="1"
-                    Padding="24" Margin="0,0,0,16">
+        BorderBrush="#E5E7EB" BorderThickness="1"
+        Padding="24" Margin="0,0,0,16">
                 <StackPanel>
-                    <TextBlock Text="Участие в конкурсах" FontSize="14"
-                               FontWeight="SemiBold" Margin="0,0,0,12"/>
+                    <Grid Margin="0,0,0,12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="Участие в конкурсах"
+                       FontSize="14" FontWeight="SemiBold"
+                       VerticalAlignment="Center"/>
+                        <Button x:Name="AddToContestBtn" Grid.Column="1"
+                    Content="+ Добавить на конкурс" Padding="12,6"
+                    Background="#534AB7" Foreground="White"
+                    BorderThickness="0" FontSize="12" Cursor="Hand"
+                    Click="AddToContestBtn_Click"/>
+                    </Grid>
                     <DataGrid x:Name="ContestsGrid"
                               AutoGenerateColumns="False" IsReadOnly="True"
-                              GridLinesVisibility="None"
-                              HeadersVisibility="Column"
+                              GridLinesVisibility="None" HeadersVisibility="Column"
                               BorderThickness="0" RowHeight="38"
                               FontSize="12" Background="White"
-                              CanUserResizeRows="False">
+                              CanUserResizeRows="False"
+                              SelectionChanged="ContestsGrid_SelectionChanged">
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="Конкурс"
-                                Binding="{Binding ContestName}" Width="*"/>
+                    Binding="{Binding ContestName}" Width="*"/>
                             <DataGridTextColumn Header="Уровень"
-                                Binding="{Binding Level}" Width="130"/>
+                    Binding="{Binding Level}" Width="130"/>
                             <DataGridTextColumn Header="Результат"
-                                Binding="{Binding Result}" Width="120"/>
+                    Binding="{Binding Result}" Width="120"/>
                             <DataGridTextColumn Header="Место"
-                                Binding="{Binding Place}" Width="60"/>
+                    Binding="{Binding Place}" Width="60"/>
                         </DataGrid.Columns>
                     </DataGrid>
                 </StackPanel>

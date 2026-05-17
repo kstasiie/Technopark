@@ -1,5 +1,7 @@
 ﻿using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
+using Microsoft.EntityFrameworkCore;
 using Technopark.Services;
 using Technopark.Views;
 
@@ -42,6 +44,7 @@ namespace Technopark
                     };
                 }
             };
+            NavigateTo("Dashboard");
         }
 
         private void BackButton_Click(object sender, RoutedEventArgs e)
@@ -103,8 +106,8 @@ namespace Technopark
             Page? pageView = page switch
             {
                 "Dashboard" => new Views.DashboardPage(),
-                "Projects" => new Views.ProjectsPage(),
-                "MyProjects" => new Views.ProjectsPage(),
+                "Projects" => new Views.ProjectsPage(false),
+                "MyProjects" => new Views.ProjectsPage(true),
                 "Contests" => new Views.ContestsPage(),
                 "Teams" => new Views.TeamsPage(),
                 "Users" => new Views.UsersPage(),
@@ -147,6 +150,25 @@ namespace Technopark
             return parts.Length >= 2
                 ? $"{parts[0][0]}{parts[1][0]}"
                 : fullName.Length > 0 ? fullName[0].ToString() : "?";
+        }
+
+        private async void UserInfo_Click(object sender, MouseButtonEventArgs e)
+        {
+            using var db = new Data.AppDbContext();
+            if (CurrentSession.IsMentor)
+            {
+                var mentor = await db.MentorProfiles
+                    .FirstOrDefaultAsync(m => m.UserId == CurrentSession.UserId);
+                if (mentor != null)
+                    MainFrame.Navigate(new Views.MentorDetailsPage(mentor.Id));
+            }
+            else if (CurrentSession.IsStudent)
+            {
+                var student = await db.StudentProfiles
+                    .FirstOrDefaultAsync(s => s.UserId == CurrentSession.UserId);
+                if (student != null)
+                    MainFrame.Navigate(new Views.StudentDetailsPage(student.Id));
+            }
         }
     }
 }

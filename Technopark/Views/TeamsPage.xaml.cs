@@ -8,7 +8,6 @@ namespace Technopark.Views
 {
     public partial class TeamsPage : Page
     {
-        private readonly AppDbContext _db = new();
         private List<TeamViewModel> _allTeams = [];
         private bool _searchFocused = false;
 
@@ -19,11 +18,14 @@ namespace Technopark.Views
 
             if (CurrentSession.IsStudent)
                 AddTeamBtn.Visibility = Visibility.Collapsed;
+            if (!CurrentSession.IsAdmin)
+                ActionsColumn.Visibility = Visibility.Collapsed;
         }
 
         private async Task LoadTeamsAsync()
         {
-            var teams = await _db.Teams
+            using var db = new AppDbContext();
+            var teams = await db.Teams
                 .Include(t => t.Members)
                 .Include(t => t.Projects)
                 .OrderBy(t => t.Name)
@@ -94,9 +96,10 @@ namespace Technopark.Views
 
         private async void EditTeam_Click(object sender, RoutedEventArgs e)
         {
+            using var db = new AppDbContext();
             if (sender is not Button btn || btn.Tag is not int teamId) return;
 
-            var team = await _db.Teams
+            var team = await db.Teams
                 .Include(t => t.Members).ThenInclude(m => m.Student)
                 .Include(t => t.Members).ThenInclude(m => m.Role)
                 .FirstOrDefaultAsync(t => t.Id == teamId);
@@ -111,10 +114,11 @@ namespace Technopark.Views
 
         private async void DeleteTeam_Click(object sender, RoutedEventArgs e)
         {
+            using var db = new AppDbContext();
             if (sender is not Button btn || btn.Tag is not int teamId) return;
             if (!CurrentSession.IsAdmin) return;
 
-            var team = await _db.Teams.FindAsync(teamId);
+            var team = await db.Teams.FindAsync(teamId);
             if (team == null) return;
 
             var result = MessageBox.Show(
@@ -123,8 +127,8 @@ namespace Technopark.Views
 
             if (result != MessageBoxResult.Yes) return;
 
-            _db.Teams.Remove(team);
-            await _db.SaveChangesAsync();
+            db.Teams.Remove(team);
+            await db.SaveChangesAsync();
             await LoadTeamsAsync();
         }
         private void TeamsGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
