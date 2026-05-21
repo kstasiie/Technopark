@@ -9,7 +9,6 @@ namespace Technopark.Views
 {
     public partial class ContestDetailsPage : Page
     {
-        private readonly AppDbContext _db = new();
         private readonly int _contestId;
         private Contest? _contest;
 
@@ -22,7 +21,8 @@ namespace Technopark.Views
 
         private async Task LoadAsync()
         {
-            _contest = await _db.Contests
+            using var db = new AppDbContext();
+            _contest = await db.Contests
                 .Include(c => c.Level)
                 .Include(c => c.Participations).ThenInclude(p => p.Project).ThenInclude(p => p!.Mentor)
                 .Include(c => c.Participations).ThenInclude(p => p.Result)
@@ -57,13 +57,38 @@ namespace Technopark.Views
 
         private async void DeleteBtn_Click(object sender, RoutedEventArgs e)
         {
-            if (_contest == null) return;
-            var result = MessageBox.Show($"Удалить конкурс «{_contest.Name}»?",
-                "Подтверждение", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+            if (_contest == null || !CurrentSession.IsAdmin) return;
+
+            var result = MessageBox.Show(
+                $"Удалить конкурс «{_contest.Name}»?\n\nВместе с конкурсом будут удалены все записи об участии проектов в нём.",
+                "Подтверждение удаления", MessageBoxButton.YesNo, MessageBoxImage.Warning);
             if (result != MessageBoxResult.Yes) return;
-            _db.Contests.Remove(_contest);
-            await _db.SaveChangesAsync();
-            if (NavigationService?.CanGoBack == true) NavigationService.GoBack();
+
+            try
+            {
+                using var db = new AppDbContext();
+                var contest = await db.Contests.FirstOrDefaultAsync(c => c.Id == _contestId);
+                if (contest == null)
+                {
+                    MessageBox.Show("Конкурс не найден. Возможно, он уже был удалён.",
+                        "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    if (NavigationService?.CanGoBack == true) NavigationService.GoBack();
+                    return;
+                }
+
+                db.Contests.Remove(contest);
+                await db.SaveChangesAsync();
+
+                MessageBox.Show($"Конкурс «{contest.Name}» успешно удалён.",
+                    "Готово", MessageBoxButton.OK, MessageBoxImage.Information);
+
+                if (NavigationService?.CanGoBack == true) NavigationService.GoBack();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Не удалось удалить конкурс:\n\n{ex.Message}",
+                    "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         private void ProjectsGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)

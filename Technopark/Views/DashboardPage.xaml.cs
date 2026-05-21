@@ -10,8 +10,7 @@ namespace Technopark.Views
 {
     public partial class DashboardPage : Page
     {
-        private readonly AppDbContext _db = new();
-
+       
         public DashboardPage()
         {
             InitializeComponent();
@@ -28,16 +27,17 @@ namespace Technopark.Views
 
         private async Task LoadStatsAsync()
         {
+            using var db = new AppDbContext();
             StatsGrid.Children.Clear();
 
             if (CurrentSession.IsAdmin)
             {
-                var projectCount = await _db.Projects.CountAsync();
-                var mentorCount = await _db.Users
+                var projectCount = await db.Projects.CountAsync();
+                var mentorCount = await db.Users
                     .CountAsync(u => u.Role == "Mentor" && u.IsActive);
-                var studentCount = await _db.Users
+                var studentCount = await db.Users
                     .CountAsync(u => u.Role == "Student" && u.IsActive);
-                var contestCount = await _db.Contests.CountAsync();
+                var contestCount = await db.Contests.CountAsync();
 
                 AddStatCard("Проектов", projectCount.ToString(), "#534AB7");
                 AddStatCard("Наставников", mentorCount.ToString(), "#0F6E56");
@@ -46,17 +46,17 @@ namespace Technopark.Views
             }
             else if (CurrentSession.IsMentor)
             {
-                var mentor = await _db.MentorProfiles
+                var mentor = await db.MentorProfiles
                     .FirstOrDefaultAsync(m => m.UserId == CurrentSession.UserId);
 
                 if (mentor != null)
                 {
-                    var myProjects = await _db.Projects
+                    var myProjects = await db.Projects
                         .CountAsync(p => p.MentorId == mentor.Id);
-                    var myActive = await _db.Projects
+                    var myActive = await db.Projects
                         .CountAsync(p => p.MentorId == mentor.Id
                                       && p.Status!.Name == "В разработке");
-                    var myMembers = await _db.TeamMembers
+                    var myMembers = await db.TeamMembers
                         .CountAsync(tm => tm.Team.Projects
                             .Any(p => p.MentorId == mentor.Id));
 
@@ -67,17 +67,17 @@ namespace Technopark.Views
             }
             else
             {
-                var student = await _db.StudentProfiles
+                var student = await db.StudentProfiles
                     .FirstOrDefaultAsync(s => s.UserId == CurrentSession.UserId);
 
                 if (student != null)
                 {
-                    var myProjects = await _db.TeamMembers
+                    var myProjects = await db.TeamMembers
                         .CountAsync(tm => tm.StudentId == student.Id);
-                    var myContests = await _db.ContestParticipations
+                    var myContests = await db.ContestParticipations
                         .CountAsync(cp => cp.Project.Team.Members
                             .Any(m => m.StudentId == student.Id));
-                    var myPrizes = await _db.ContestParticipations
+                    var myPrizes = await db.ContestParticipations
                         .CountAsync(cp => cp.Result != null &&
                             cp.Result.Name != "Участник" &&
                             cp.Project.Team.Members
@@ -128,11 +128,12 @@ namespace Technopark.Views
 
         private async Task LoadProjectsAsync()
         {
+            using var db = new AppDbContext();
             List<Project> projects;
 
             if (CurrentSession.IsAdmin)
             {
-                projects = await _db.Projects
+                projects = await db.Projects
                     .Include(p => p.Direction)
                     .Include(p => p.Mentor)
                     .Include(p => p.Status)
@@ -142,10 +143,10 @@ namespace Technopark.Views
             }
             else if (CurrentSession.IsMentor)
             {
-                var mentor = await _db.MentorProfiles
+                var mentor = await db.MentorProfiles
                     .FirstOrDefaultAsync(m => m.UserId == CurrentSession.UserId);
 
-                projects = mentor == null ? [] : await _db.Projects
+                projects = mentor == null ? [] : await db.Projects
                     .Include(p => p.Direction)
                     .Include(p => p.Mentor)
                     .Include(p => p.Status)
@@ -156,10 +157,10 @@ namespace Technopark.Views
             }
             else
             {
-                var student = await _db.StudentProfiles
+                var student = await db.StudentProfiles
                     .FirstOrDefaultAsync(s => s.UserId == CurrentSession.UserId);
 
-                projects = student == null ? [] : await _db.Projects
+                projects = student == null ? [] : await db.Projects
                     .Include(p => p.Direction)
                     .Include(p => p.Mentor)
                     .Include(p => p.Status)
@@ -174,7 +175,8 @@ namespace Technopark.Views
 
         private async Task LoadContestsAsync()
         {
-            var contests = await _db.Contests
+            using var db = new AppDbContext();
+            var contests = await db.Contests
                 .Include(c => c.Level)
                 .OrderByDescending(c => c.Date)
                 .Take(5)

@@ -96,6 +96,9 @@
                     <Button x:Name="BtnAnalytics" Tag="Analytics"
             Style="{StaticResource NavButton}" Content="📊  Аналитика"
             Click="NavButton_Click"/>
+                    <Button x:Name="BtnReferences" Tag="References"
+            Style="{StaticResource NavButton}" Content="📚  Справочники"
+            Click="NavButton_Click"/>
 
                     <!-- Только Student -->
                     <TextBlock x:Name="SectionPortfolio" Text="ПРОФИЛЬ"
@@ -109,7 +112,9 @@
                 <!-- Пользователь внизу -->
                 <Border Grid.Row="2" BorderBrush="#374151" BorderThickness="0,1,0,0"
                         Padding="16,12">
-                    <Grid>
+                    <Grid x:Name="UserInfoGrid" Cursor="Hand"
+          MouseLeftButtonDown="UserInfo_Click"
+          Background="Transparent">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="36"/>
                             <ColumnDefinition Width="*"/>

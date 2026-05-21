@@ -9,7 +9,6 @@ namespace Technopark.Views
 {
     public partial class MentorDetailsPage : Page
     {
-        private readonly AppDbContext _db = new();
         private readonly int _mentorId;
         private MentorProfile? _mentor;
 
@@ -22,7 +21,8 @@ namespace Technopark.Views
 
         private async Task LoadAsync()
         {
-            _mentor = await _db.MentorProfiles
+            using var db = new AppDbContext();
+            _mentor = await db.MentorProfiles
                 .Include(m => m.Direction)
                 .Include(m => m.User)
                 .Include(m => m.Projects).ThenInclude(p => p.Direction)
@@ -51,14 +51,18 @@ namespace Technopark.Views
             }
 
             // Кнопки только для Admin
-            EditBtn.Visibility = CurrentSession.IsAdmin ? Visibility.Visible : Visibility.Collapsed;
-            DeleteBtn.Visibility = CurrentSession.IsAdmin ? Visibility.Visible : Visibility.Collapsed;
+            bool isOwnProfile = _mentor.UserId == CurrentSession.UserId;
+            EditBtn.Visibility = (CurrentSession.IsAdmin || isOwnProfile)
+                ? Visibility.Visible : Visibility.Collapsed;
+            DeleteBtn.Visibility = (CurrentSession.IsAdmin && !isOwnProfile)
+                ? Visibility.Visible : Visibility.Collapsed;
         }
 
         private async void EditBtn_Click(object sender, RoutedEventArgs e)
         {
+            using var db = new AppDbContext();
             if (_mentor?.User == null) return;
-            var user = await _db.Users
+            var user = await db.Users
                 .Include(u => u.MentorProfile)
                 .FirstOrDefaultAsync(u => u.Id == _mentor.UserId);
             if (user == null) return;
@@ -68,15 +72,45 @@ namespace Technopark.Views
 
         private async void DeleteBtn_Click(object sender, RoutedEventArgs e)
         {
-            if (_mentor == null) return;
-            var result = MessageBox.Show($"Удалить наставника «{_mentor.FullName}»?",
-                "Подтверждение", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+            if (_mentor == null || !CurrentSession.IsAdmin) return;
+
+            if (_mentor.UserId == CurrentSession.UserId)
+            {
+                MessageBox.Show("Нельзя удалить собственный профиль.",
+                    "Действие запрещено", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            var result = MessageBox.Show(
+                $"Удалить наставника «{_mentor.FullName}»?\n\nВместе с наставником будут удалены его учётная запись и все проекты, которые он ведёт.",
+                "Подтверждение удаления", MessageBoxButton.YesNo, MessageBoxImage.Warning);
             if (result != MessageBoxResult.Yes) return;
 
-            var user = await _db.Users.FindAsync(_mentor.UserId);
-            if (user != null) _db.Users.Remove(user);
-            await _db.SaveChangesAsync();
-            if (NavigationService?.CanGoBack == true) NavigationService.GoBack();
+            try
+            {
+                using var db = new AppDbContext();
+                var user = await db.Users.FindAsync(_mentor.UserId);
+                if (user == null)
+                {
+                    MessageBox.Show("Пользователь не найден. Возможно, наставник уже удалён.",
+                        "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    if (NavigationService?.CanGoBack == true) NavigationService.GoBack();
+                    return;
+                }
+
+                db.Users.Remove(user);
+                await db.SaveChangesAsync();
+
+                MessageBox.Show($"Наставник «{_mentor.FullName}» успешно удалён.",
+                    "Готово", MessageBoxButton.OK, MessageBoxImage.Information);
+
+                if (NavigationService?.CanGoBack == true) NavigationService.GoBack();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Не удалось удалить наставника:\n\n{ex.Message}",
+                    "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         private void ProjectsGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)

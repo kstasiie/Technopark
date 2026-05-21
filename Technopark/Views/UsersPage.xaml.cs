@@ -10,7 +10,6 @@ namespace Technopark.Views
 {
     public partial class UsersPage : Page
     {
-        private readonly AppDbContext _db = new();
         private List<User> _allUsers = [];
         private bool _searchFocused = false;
 
@@ -18,12 +17,16 @@ namespace Technopark.Views
         {
             InitializeComponent();
             Loaded += async (s, e) => await LoadUsersAsync();
+
+            if (!CurrentSession.IsAdmin)
+                ActionsColumn.Visibility = Visibility.Collapsed;
         }
 
         private async Task LoadUsersAsync()
         {
-            _allUsers = await _db.Users
-                .Include(u => u.MentorProfile)
+            using var db = new AppDbContext();
+            _allUsers = await db.Users
+                .Include(u => u.MentorProfile).ThenInclude(m => m!.Direction)
                 .Include(u => u.StudentProfile)
                 .OrderBy(u => u.Login)
                 .ToListAsync();
@@ -130,9 +133,10 @@ namespace Technopark.Views
         }
         private async void EditUser_Click(object sender, RoutedEventArgs e)
         {
+            using var db = new AppDbContext();
             if (sender is not Button btn || btn.Tag is not int userId) return;
 
-            var user = await _db.Users
+            var user = await db.Users
                 .Include(u => u.MentorProfile)
                 .Include(u => u.StudentProfile)
                 .FirstOrDefaultAsync(u => u.Id == userId);
@@ -147,40 +151,62 @@ namespace Technopark.Views
         private async void DeleteUser_Click(object sender, RoutedEventArgs e)
         {
             if (sender is not Button btn || btn.Tag is not int userId) return;
+            if (!CurrentSession.IsAdmin) return;
 
             if (userId == CurrentSession.UserId)
             {
-                MessageBox.Show("Нельзя удалить текущего пользователя");
+                MessageBox.Show("Нельзя удалить собственную учётную запись.",
+                    "Действие запрещено", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
-            var user = await _db.Users.FindAsync(userId);
-            if (user == null) return;
+            try
+            {
+                using var db = new AppDbContext();
+                var user = await db.Users.FindAsync(userId);
+                if (user == null)
+                {
+                    MessageBox.Show("Пользователь не найден. Возможно, он уже был удалён.",
+                        "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    await LoadUsersAsync();
+                    return;
+                }
 
-            var result = MessageBox.Show(
-                $"Удалить пользователя «{user.Login}»?",
-                "Подтверждение", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+                var result = MessageBox.Show(
+                    $"Удалить пользователя «{user.Login}»?\n\nВместе с пользователем будут удалены его профиль, проекты (если он наставник) и членство в командах (если он участник).",
+                    "Подтверждение удаления", MessageBoxButton.YesNo, MessageBoxImage.Warning);
 
-            if (result != MessageBoxResult.Yes) return;
+                if (result != MessageBoxResult.Yes) return;
 
-            _db.Users.Remove(user);
-            await _db.SaveChangesAsync();
-            await LoadUsersAsync();
+                db.Users.Remove(user);
+                await db.SaveChangesAsync();
+
+                MessageBox.Show($"Пользователь «{user.Login}» успешно удалён.",
+                    "Готово", MessageBoxButton.OK, MessageBoxImage.Information);
+
+                await LoadUsersAsync();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Не удалось удалить пользователя:\n\n{ex.Message}",
+                    "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
         private async void UsersGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
+            using var db = new AppDbContext();
             if (UsersGrid.SelectedItem is not UserViewModel vm) return;
 
             if (vm.Role == "Mentor")
             {
-                var mentor = await _db.MentorProfiles
+                var mentor = await db.MentorProfiles
                     .FirstOrDefaultAsync(m => m.UserId == vm.UserId);
                 if (mentor != null)
                     NavigationService?.Navigate(new MentorDetailsPage(mentor.Id));
             }
             else if (vm.Role == "Student")
             {
-                var student = await _db.StudentProfiles
+                var student = await db.StudentProfiles
                     .FirstOrDefaultAsync(s => s.UserId == vm.UserId);
                 if (student != null)
                     NavigationService?.Navigate(new StudentDetailsPage(student.Id));

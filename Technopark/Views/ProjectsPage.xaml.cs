@@ -10,13 +10,14 @@ namespace Technopark.Views
 {
     public partial class ProjectsPage : Page
     {
-        private readonly AppDbContext _db = new();
         private List<Project> _allProjects = [];
         private bool _searchFocused = false;
+        private readonly bool _onlyMy;
 
-        public ProjectsPage()
+        public ProjectsPage(bool onlyMyProjects = false)
         {
             InitializeComponent();
+            _onlyMy = onlyMyProjects;
             Loaded += async (s, e) => await InitAsync();
         }
 
@@ -28,11 +29,15 @@ namespace Technopark.Views
             // Скрываем кнопку добавления для участника
             if (CurrentSession.IsStudent)
                 AddProjectBtn.Visibility = Visibility.Collapsed;
+
+            if (!CurrentSession.IsAdmin)
+                ActionsColumn.Visibility = Visibility.Collapsed;
         }
 
         private async Task LoadFiltersAsync()
         {
-            var directions = await _db.Directions.OrderBy(d => d.Name).ToListAsync();
+            using var db = new AppDbContext();
+            var directions = await db.Directions.OrderBy(d => d.Name).ToListAsync();
             var allDir = new List<object> { new { Id = 0, Name = "Все направления" } };
             allDir.AddRange(directions.Cast<object>());
             DirectionFilter.ItemsSource = allDir;
@@ -40,7 +45,7 @@ namespace Technopark.Views
             DirectionFilter.SelectedValuePath = "Id";
             DirectionFilter.SelectedIndex = 0;
 
-            var statuses = await _db.ProjectStatuses.ToListAsync();
+            var statuses = await db.ProjectStatuses.ToListAsync();
             var allSt = new List<object> { new { Id = 0, Name = "Все статусы" } };
             allSt.AddRange(statuses.Cast<object>());
             StatusFilter.ItemsSource = allSt;
@@ -51,23 +56,20 @@ namespace Technopark.Views
 
         private async Task LoadProjectsAsync()
         {
-            var query = _db.Projects
+            using var db = new AppDbContext();
+            var query = db.Projects
                 .Include(p => p.Direction)
                 .Include(p => p.Mentor)
                 .Include(p => p.Team)
                 .Include(p => p.Status)
                 .AsQueryable();
 
-            // Наставник видит все, но редактирует только свои
-            if (CurrentSession.IsMentor)
+            if (_onlyMy && CurrentSession.IsMentor)
             {
-                var mentor = await _db.MentorProfiles
+                var mentor = await db.MentorProfiles
                     .FirstOrDefaultAsync(m => m.UserId == CurrentSession.UserId);
-                // Показываем все проекты, фильтрацию не применяем
-            }
-            else if (CurrentSession.IsStudent)
-            {
-                // Участник тоже видит все проекты
+                if (mentor != null)
+                    query = query.Where(p => p.MentorId == mentor.Id);
             }
 
             _allProjects = await query
@@ -145,16 +147,17 @@ namespace Technopark.Views
         }
         private async void EditProject_Click(object sender, RoutedEventArgs e)
         {
+            using var db = new AppDbContext();
             if (sender is Button btn && btn.Tag is Project project)
             {
-                var full = await _db.Projects
+                var full = await db.Projects
                     .Include(p => p.Direction).Include(p => p.Status)
                     .Include(p => p.Mentor).Include(p => p.Team)
                     .FirstOrDefaultAsync(p => p.Id == project.Id);
 
                 if (full == null) return;
 
-                var mentor = await _db.MentorProfiles
+                var mentor = await db.MentorProfiles
                     .FirstOrDefaultAsync(m => m.UserId == CurrentSession.UserId);
                 bool canEdit = CurrentSession.IsAdmin ||
                     (CurrentSession.IsMentor && full.MentorId == mentor?.Id);
@@ -171,17 +174,35 @@ namespace Technopark.Views
             if (!CurrentSession.IsAdmin) return;
 
             var result = MessageBox.Show(
-                $"Удалить проект «{project.Name}»?",
-                "Подтверждение", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+                $"Удалить проект «{project.Name}»?\n\nВместе с проектом будут удалены все его материалы и записи об участии в конкурсах.",
+                "Подтверждение удаления", MessageBoxButton.YesNo, MessageBoxImage.Warning);
 
             if (result != MessageBoxResult.Yes) return;
 
-            var full = await _db.Projects.FindAsync(project.Id);
-            if (full != null)
+            try
             {
-                _db.Projects.Remove(full);
-                await _db.SaveChangesAsync();
+                using var db = new AppDbContext();
+                var full = await db.Projects.FindAsync(project.Id);
+                if (full == null)
+                {
+                    MessageBox.Show("Проект не найден. Возможно, он уже был удалён.",
+                        "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    await LoadProjectsAsync();
+                    return;
+                }
+
+                db.Projects.Remove(full);
+                await db.SaveChangesAsync();
+
+                MessageBox.Show($"Проект «{full.Name}» успешно удалён.",
+                    "Готово", MessageBoxButton.OK, MessageBoxImage.Information);
+
                 await LoadProjectsAsync();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Не удалось удалить проект:\n\n{ex.Message}",
+                    "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
     }

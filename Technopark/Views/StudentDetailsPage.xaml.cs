@@ -10,7 +10,6 @@ namespace Technopark.Views
 {
     public partial class StudentDetailsPage : Page
     {
-        private readonly AppDbContext _db = new();
         private readonly int _studentId;
         private StudentProfile? _student;
 
@@ -23,7 +22,8 @@ namespace Technopark.Views
 
         private async Task LoadAsync()
         {
-            _student = await _db.StudentProfiles
+            using var db = new AppDbContext();
+            _student = await db.StudentProfiles
                 .Include(s => s.User)
                 .Include(s => s.TeamMemberships).ThenInclude(tm => tm.Team)
                     .ThenInclude(t => t!.Projects)
@@ -49,7 +49,7 @@ namespace Technopark.Views
                 .SelectMany(tm => tm.Team!.Projects.Select(p => p.Id))
                 .Distinct().ToList();
 
-            var participations = await _db.ContestParticipations
+            var participations = await db.ContestParticipations
                 .Include(cp => cp.Contest)
                 .Include(cp => cp.Project)
                 .Include(cp => cp.Result)
@@ -64,8 +64,8 @@ namespace Technopark.Views
                 Place = cp.Place?.ToString() ?? "—"
             }).ToList();
 
-            // Личные данные — только Admin
-            if (CurrentSession.IsAdmin)
+            // Личные данные — только Admin и наставник
+            if (!CurrentSession.IsStudent)
             {
                 BirthDateText.Text = $"Дата рождения: {_student.BirthDate?.ToString("dd.MM.yyyy") ?? "не указана"}";
                 EmailText.Text = $"Email: {_student.Email ?? "не указан"}";
@@ -76,14 +76,18 @@ namespace Technopark.Views
                 ContactsBlock.Visibility = Visibility.Collapsed;
             }
 
-            EditBtn.Visibility = CurrentSession.IsAdmin ? Visibility.Visible : Visibility.Collapsed;
-            DeleteBtn.Visibility = CurrentSession.IsAdmin ? Visibility.Visible : Visibility.Collapsed;
+            bool isOwnProfile = _student.UserId == CurrentSession.UserId;
+            EditBtn.Visibility = (CurrentSession.IsAdmin || isOwnProfile)
+                ? Visibility.Visible : Visibility.Collapsed;
+            DeleteBtn.Visibility = (CurrentSession.IsAdmin && !isOwnProfile)
+                ? Visibility.Visible : Visibility.Collapsed;
         }
 
         private async void EditBtn_Click(object sender, RoutedEventArgs e)
         {
+            using var db = new AppDbContext();
             if (_student?.User == null) return;
-            var user = await _db.Users
+            var user = await db.Users
                 .Include(u => u.StudentProfile)
                 .FirstOrDefaultAsync(u => u.Id == _student.UserId);
             if (user == null) return;
@@ -93,14 +97,45 @@ namespace Technopark.Views
 
         private async void DeleteBtn_Click(object sender, RoutedEventArgs e)
         {
-            if (_student == null) return;
-            var result = MessageBox.Show($"Удалить участника «{_student.FullName}»?",
-                "Подтверждение", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+            if (_student == null || !CurrentSession.IsAdmin) return;
+
+            if (_student.UserId == CurrentSession.UserId)
+            {
+                MessageBox.Show("Нельзя удалить собственный профиль.",
+                    "Действие запрещено", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            var result = MessageBox.Show(
+                $"Удалить участника «{_student.FullName}»?\n\nВместе с участником будут удалены его учётная запись и все его записи в составах команд.",
+                "Подтверждение удаления", MessageBoxButton.YesNo, MessageBoxImage.Warning);
             if (result != MessageBoxResult.Yes) return;
-            var user = await _db.Users.FindAsync(_student.UserId);
-            if (user != null) _db.Users.Remove(user);
-            await _db.SaveChangesAsync();
-            if (NavigationService?.CanGoBack == true) NavigationService.GoBack();
+
+            try
+            {
+                using var db = new AppDbContext();
+                var user = await db.Users.FindAsync(_student.UserId);
+                if (user == null)
+                {
+                    MessageBox.Show("Пользователь не найден. Возможно, участник уже удалён.",
+                        "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    if (NavigationService?.CanGoBack == true) NavigationService.GoBack();
+                    return;
+                }
+
+                db.Users.Remove(user);
+                await db.SaveChangesAsync();
+
+                MessageBox.Show($"Участник «{_student.FullName}» успешно удалён.",
+                    "Готово", MessageBoxButton.OK, MessageBoxImage.Information);
+
+                if (NavigationService?.CanGoBack == true) NavigationService.GoBack();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Не удалось удалить участника:\n\n{ex.Message}",
+                    "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         private void TeamLink_Click(object sender, MouseButtonEventArgs e)

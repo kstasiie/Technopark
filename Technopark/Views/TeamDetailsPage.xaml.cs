@@ -10,7 +10,6 @@ namespace Technopark.Views
 {
     public partial class TeamDetailsPage : Page
     {
-        private readonly AppDbContext _db = new();
         private readonly int _teamId;
         private Team? _team;
 
@@ -23,7 +22,8 @@ namespace Technopark.Views
 
         private async Task LoadAsync()
         {
-            _team = await _db.Teams
+            using var db = new AppDbContext();
+            _team = await db.Teams
                 .Include(t => t.Members).ThenInclude(m => m.Student)
                 .Include(t => t.Members).ThenInclude(m => m.Role)
                 .Include(t => t.Projects).ThenInclude(p => p.Direction)
@@ -57,13 +57,38 @@ namespace Technopark.Views
 
         private async void DeleteBtn_Click(object sender, RoutedEventArgs e)
         {
-            if (_team == null) return;
-            var result = MessageBox.Show($"Удалить команду «{_team.Name}»?",
-                "Подтверждение", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+            if (_team == null || !CurrentSession.IsAdmin) return;
+
+            var result = MessageBox.Show(
+                $"Удалить команду «{_team.Name}»?\n\nВместе с командой будут удалены все её проекты и связи с участниками.",
+                "Подтверждение удаления", MessageBoxButton.YesNo, MessageBoxImage.Warning);
             if (result != MessageBoxResult.Yes) return;
-            _db.Teams.Remove(_team);
-            await _db.SaveChangesAsync();
-            if (NavigationService?.CanGoBack == true) NavigationService.GoBack();
+
+            try
+            {
+                using var db = new AppDbContext();
+                var team = await db.Teams.FirstOrDefaultAsync(t => t.Id == _teamId);
+                if (team == null)
+                {
+                    MessageBox.Show("Команда не найдена. Возможно, она уже была удалена.",
+                        "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    if (NavigationService?.CanGoBack == true) NavigationService.GoBack();
+                    return;
+                }
+
+                db.Teams.Remove(team);
+                await db.SaveChangesAsync();
+
+                MessageBox.Show($"Команда «{team.Name}» успешно удалена.",
+                    "Готово", MessageBoxButton.OK, MessageBoxImage.Information);
+
+                if (NavigationService?.CanGoBack == true) NavigationService.GoBack();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Не удалось удалить команду:\n\n{ex.Message}",
+                    "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         private void MemberLink_Click(object sender, MouseButtonEventArgs e)

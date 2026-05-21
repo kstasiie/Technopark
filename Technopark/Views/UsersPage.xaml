@@ -59,7 +59,7 @@
                         Binding="{Binding PositionOrClass}" Width="160"/>
                     <DataGridTextColumn Header="Направление"
                         Binding="{Binding DirectionName}" Width="120"/>
-                    <DataGridTemplateColumn Width="80">
+                    <DataGridTemplateColumn x:Name="ActionsColumn" Width="80">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
                                 <StackPanel Orientation="Horizontal">

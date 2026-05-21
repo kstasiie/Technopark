@@ -6,7 +6,6 @@ namespace Technopark.Views
 {
     public partial class AnalyticsPage : Page
     {
-        private readonly AppDbContext _db = new();
 
         public AnalyticsPage()
         {
@@ -25,7 +24,8 @@ namespace Technopark.Views
         // 1. Активность по направлениям
         private async Task LoadDirectionsAsync()
         {
-            var data = await _db.Directions
+            using var db = new AppDbContext();
+            var data = await db.Directions
                 .Select(d => new
                 {
                     Label = d.Name,
@@ -48,7 +48,8 @@ namespace Technopark.Views
         // 2. Эффективность наставников
         private async Task LoadMentorsAsync()
         {
-            var mentors = await _db.MentorProfiles
+            using var db = new AppDbContext();
+            var mentors = await db.MentorProfiles
                 .Include(m => m.Direction)
                 .Include(m => m.Projects).ThenInclude(p => p.Status)
                 .Include(m => m.Projects).ThenInclude(p => p.ContestParticipations)
@@ -73,7 +74,8 @@ namespace Technopark.Views
         // 3. Конкурсная активность по годам
         private async Task LoadContestsAsync()
         {
-            var participations = await _db.ContestParticipations
+            using var db = new AppDbContext();
+            var participations = await db.ContestParticipations
                 .Include(cp => cp.Contest)
                 .Include(cp => cp.Result)
                 .ToListAsync();
@@ -108,10 +110,12 @@ namespace Technopark.Views
         // 4. Динамика по годам
         private async Task LoadDynamicsAsync()
         {
-            var projects = await _db.Projects
+            using var db = new AppDbContext();
+
+            var projects = await db.Projects
                 .Include(p => p.Status)
                 .ToListAsync();
-            var teams = await _db.Teams.ToListAsync();
+            var teams = await db.Teams.ToListAsync();
 
             var allYears = projects.Select(p => p.StartDate.Year)
                 .Concat(teams.Select(t => t.FormationYear))

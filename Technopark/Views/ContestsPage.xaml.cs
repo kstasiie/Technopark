@@ -10,7 +10,6 @@ namespace Technopark.Views
 {
     public partial class ContestsPage : Page
     {
-        private readonly AppDbContext _db = new();
         private List<ContestViewModel> _allContests = [];
         private bool _searchFocused = false;
 
@@ -27,11 +26,15 @@ namespace Technopark.Views
 
             if (CurrentSession.IsStudent)
                 AddContestBtn.Visibility = Visibility.Collapsed;
+
+            if (!CurrentSession.IsAdmin)
+                ActionsColumn.Visibility = Visibility.Collapsed;
         }
 
         private async Task LoadFiltersAsync()
         {
-            var levels = await _db.ContestLevels.ToListAsync();
+            using var db = new AppDbContext();
+            var levels = await db.ContestLevels.ToListAsync();
             var all = new List<object> { new { Id = 0, Name = "Все уровни" } };
             all.AddRange(levels.Cast<object>());
             LevelFilter.ItemsSource = all;
@@ -42,7 +45,8 @@ namespace Technopark.Views
 
         private async Task LoadContestsAsync()
         {
-            var contests = await _db.Contests
+            using var db = new AppDbContext();
+            var contests = await db.Contests
                 .Include(c => c.Level)
                 .Include(c => c.Participations)
                 .OrderByDescending(c => c.Date)
@@ -149,17 +153,35 @@ namespace Technopark.Views
             if (!CurrentSession.IsAdmin) return;
 
             var result = MessageBox.Show(
-                $"Удалить конкурс «{vm.Name}»?",
-                "Подтверждение", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+                $"Удалить конкурс «{vm.Name}»?\n\nВместе с конкурсом будут удалены все записи об участии проектов в нём.",
+                "Подтверждение удаления", MessageBoxButton.YesNo, MessageBoxImage.Warning);
 
             if (result != MessageBoxResult.Yes) return;
 
-            var contest = await _db.Contests.FindAsync(vm.Contest.Id);
-            if (contest != null)
+            try
             {
-                _db.Contests.Remove(contest);
-                await _db.SaveChangesAsync();
+                using var db = new AppDbContext();
+                var contest = await db.Contests.FindAsync(vm.Contest.Id);
+                if (contest == null)
+                {
+                    MessageBox.Show("Конкурс не найден. Возможно, он уже был удалён.",
+                        "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    await LoadContestsAsync();
+                    return;
+                }
+
+                db.Contests.Remove(contest);
+                await db.SaveChangesAsync();
+
+                MessageBox.Show($"Конкурс «{contest.Name}» успешно удалён.",
+                    "Готово", MessageBoxButton.OK, MessageBoxImage.Information);
+
                 await LoadContestsAsync();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Не удалось удалить конкурс:\n\n{ex.Message}",
+                    "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
         private void ContestsGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)

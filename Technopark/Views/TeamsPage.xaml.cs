@@ -8,7 +8,6 @@ namespace Technopark.Views
 {
     public partial class TeamsPage : Page
     {
-        private readonly AppDbContext _db = new();
         private List<TeamViewModel> _allTeams = [];
         private bool _searchFocused = false;
 
@@ -19,11 +18,14 @@ namespace Technopark.Views
 
             if (CurrentSession.IsStudent)
                 AddTeamBtn.Visibility = Visibility.Collapsed;
+            if (!CurrentSession.IsAdmin)
+                ActionsColumn.Visibility = Visibility.Collapsed;
         }
 
         private async Task LoadTeamsAsync()
         {
-            var teams = await _db.Teams
+            using var db = new AppDbContext();
+            var teams = await db.Teams
                 .Include(t => t.Members)
                 .Include(t => t.Projects)
                 .OrderBy(t => t.Name)
@@ -94,9 +96,10 @@ namespace Technopark.Views
 
         private async void EditTeam_Click(object sender, RoutedEventArgs e)
         {
+            using var db = new AppDbContext();
             if (sender is not Button btn || btn.Tag is not int teamId) return;
 
-            var team = await _db.Teams
+            var team = await db.Teams
                 .Include(t => t.Members).ThenInclude(m => m.Student)
                 .Include(t => t.Members).ThenInclude(m => m.Role)
                 .FirstOrDefaultAsync(t => t.Id == teamId);
@@ -114,18 +117,37 @@ namespace Technopark.Views
             if (sender is not Button btn || btn.Tag is not int teamId) return;
             if (!CurrentSession.IsAdmin) return;
 
-            var team = await _db.Teams.FindAsync(teamId);
-            if (team == null) return;
+            try
+            {
+                using var db = new AppDbContext();
+                var team = await db.Teams.FindAsync(teamId);
+                if (team == null)
+                {
+                    MessageBox.Show("Команда не найдена. Возможно, она уже была удалена.",
+                        "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    await LoadTeamsAsync();
+                    return;
+                }
 
-            var result = MessageBox.Show(
-                $"Удалить команду «{team.Name}»?\nВсе связанные проекты потеряют привязку к команде.",
-                "Подтверждение", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+                var result = MessageBox.Show(
+                    $"Удалить команду «{team.Name}»?\n\nВместе с командой будут удалены все её проекты и связи с участниками.",
+                    "Подтверждение удаления", MessageBoxButton.YesNo, MessageBoxImage.Warning);
 
-            if (result != MessageBoxResult.Yes) return;
+                if (result != MessageBoxResult.Yes) return;
 
-            _db.Teams.Remove(team);
-            await _db.SaveChangesAsync();
-            await LoadTeamsAsync();
+                db.Teams.Remove(team);
+                await db.SaveChangesAsync();
+
+                MessageBox.Show($"Команда «{team.Name}» успешно удалена.",
+                    "Готово", MessageBoxButton.OK, MessageBoxImage.Information);
+
+                await LoadTeamsAsync();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Не удалось удалить команду:\n\n{ex.Message}",
+                    "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
         private void TeamsGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {

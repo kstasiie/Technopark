@@ -52,7 +52,7 @@
                         Binding="{Binding DateDisplay}" Width="100"/>
                     <DataGridTextColumn Header="Участий"
                         Binding="{Binding ParticipationCount}" Width="80"/>
-                    <DataGridTemplateColumn Width="80">
+                    <DataGridTemplateColumn x:Name="ActionsColumn" Width="80">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
                                 <StackPanel Orientation="Horizontal">

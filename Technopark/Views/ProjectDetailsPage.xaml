@@ -142,29 +142,114 @@
 
             <!-- Участие в конкурсах -->
             <Border Grid.Row="3" Background="White" CornerRadius="8"
-                    BorderBrush="#E5E7EB" BorderThickness="1"
-                    Padding="24" Margin="0,0,0,16">
+        BorderBrush="#E5E7EB" BorderThickness="1"
+        Padding="24" Margin="0,0,0,16">
                 <StackPanel>
-                    <TextBlock Text="Участие в конкурсах" FontSize="14"
-                               FontWeight="SemiBold" Margin="0,0,0,12"/>
+                    <Grid Margin="0,0,0,12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="Участие в конкурсах"
+                       FontSize="14" FontWeight="SemiBold"
+                       VerticalAlignment="Center"/>
+                        <Button x:Name="AddToContestBtn" Grid.Column="1"
+                    Content="+ Добавить на конкурс" Padding="12,6"
+                    Background="#534AB7" Foreground="White"
+                    BorderThickness="0" FontSize="12" Cursor="Hand"
+                    Click="AddToContestBtn_Click"/>
+                    </Grid>
                     <DataGrid x:Name="ContestsGrid"
                               AutoGenerateColumns="False" IsReadOnly="True"
-                              GridLinesVisibility="None"
-                              HeadersVisibility="Column"
+                              GridLinesVisibility="None" HeadersVisibility="Column"
                               BorderThickness="0" RowHeight="38"
                               FontSize="12" Background="White"
-                              CanUserResizeRows="False">
+                              CanUserResizeRows="False"
+                              SelectionChanged="ContestsGrid_SelectionChanged">
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="Конкурс"
-                                Binding="{Binding ContestName}" Width="*"/>
+                    Binding="{Binding ContestName}" Width="*"/>
                             <DataGridTextColumn Header="Уровень"
-                                Binding="{Binding Level}" Width="130"/>
+                    Binding="{Binding Level}" Width="130"/>
                             <DataGridTextColumn Header="Результат"
-                                Binding="{Binding Result}" Width="120"/>
+                    Binding="{Binding Result}" Width="120"/>
                             <DataGridTextColumn Header="Место"
-                                Binding="{Binding Place}" Width="60"/>
+                    Binding="{Binding Place}" Width="60"/>
                         </DataGrid.Columns>
                     </DataGrid>
+                </StackPanel>
+            </Border>
+
+            <!-- Материалы проекта -->
+            <Border Grid.Row="4" Background="White" CornerRadius="8"
+        BorderBrush="#E5E7EB" BorderThickness="1"
+        Padding="24" Margin="0,0,0,16">
+                <StackPanel>
+                    <Grid Margin="0,0,0,12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="Материалы проекта"
+                       FontSize="14" FontWeight="SemiBold"
+                       VerticalAlignment="Center"/>
+                        <Button x:Name="AddMaterialBtn" Grid.Column="1"
+                    Content="+ Добавить материал" Padding="12,6"
+                    Background="#534AB7" Foreground="White"
+                    BorderThickness="0" FontSize="12" Cursor="Hand"
+                    Click="AddMaterialBtn_Click"/>
+                    </Grid>
+                    <DataGrid x:Name="MaterialsGrid"
+                              AutoGenerateColumns="False" IsReadOnly="True"
+                              GridLinesVisibility="None" HeadersVisibility="Column"
+                              BorderThickness="0" RowHeight="38"
+                              FontSize="12" Background="White"
+                              CanUserResizeRows="False"
+                              SelectionMode="Single">
+                        <DataGrid.Columns>
+                            <DataGridTemplateColumn Header="Название" Width="*">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Name}"
+                                                   Foreground="#534AB7"
+                                                   TextDecorations="Underline"
+                                                   Cursor="Hand"
+                                                   VerticalAlignment="Center"
+                                                   ToolTip="{Binding Link}"
+                                                   Tag="{Binding Link}"
+                                                   MouseLeftButtonDown="MaterialLink_Click"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="Тип"
+                                Binding="{Binding TypeName}" Width="180"/>
+                            <DataGridTextColumn Header="Дата загрузки"
+                                Binding="{Binding UploadDateDisplay}" Width="120"/>
+                            <DataGridTemplateColumn x:Name="MaterialActionsColumn" Width="80">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal">
+                                            <Button Content="✏️" Width="30" Height="28"
+                                                Background="Transparent" BorderThickness="0"
+                                                Cursor="Hand" Tag="{Binding Id}"
+                                                ToolTip="Редактировать"
+                                                Click="EditMaterial_Click"/>
+                                            <Button Content="🗑️" Width="30" Height="28"
+                                                Background="Transparent" BorderThickness="0"
+                                                Cursor="Hand" Tag="{Binding Id}"
+                                                ToolTip="Удалить"
+                                                Click="DeleteMaterial_Click"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                    <TextBlock x:Name="NoMaterialsText"
+                               Text="Материалов пока нет. Добавьте ссылку на документ, презентацию, фото или видео."
+                               Foreground="#9CA3AF" FontSize="12"
+                               TextWrapping="Wrap"
+                               Margin="0,8,0,0" Visibility="Collapsed"/>
                 </StackPanel>
             </Border>
         </Grid>

@@ -1,5 +1,7 @@
 ﻿using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
+using Microsoft.EntityFrameworkCore;
 using Technopark.Services;
 using Technopark.Views;
 
@@ -33,6 +35,8 @@ namespace Technopark
                         Views.TeamsPage => "Команды",
                         Views.ExportPage => "Экспорт",
                         Views.PortfolioPage => "Моё портфолио",
+                        Views.AnalyticsPage => "Аналитика",
+                        Views.ReferenceDataPage => "Справочники",
                         Views.ProjectDetailsPage => "Информация о проекте",
                         Views.MentorDetailsPage => "Профиль наставника",
                         Views.StudentDetailsPage => "Профиль участника",
@@ -42,6 +46,7 @@ namespace Technopark
                     };
                 }
             };
+            NavigateTo("Dashboard");
         }
 
         private void BackButton_Click(object sender, RoutedEventArgs e)
@@ -75,6 +80,7 @@ namespace Technopark
                 SectionAdmin.Visibility = Visibility.Collapsed;
                 BtnUsers.Visibility = Visibility.Collapsed;
                 BtnAnalytics.Visibility = Visibility.Collapsed;
+                BtnReferences.Visibility = Visibility.Collapsed;
                 SectionPortfolio.Visibility = Visibility.Collapsed;
                 BtnPortfolio.Visibility = Visibility.Collapsed;
                 // SectionExport и BtnExport видны для Mentor
@@ -88,6 +94,7 @@ namespace Technopark
                 SectionAdmin.Visibility = Visibility.Collapsed;
                 BtnUsers.Visibility = Visibility.Collapsed;
                 BtnAnalytics.Visibility = Visibility.Collapsed;
+                BtnReferences.Visibility = Visibility.Collapsed;
                 BtnTeams.Visibility = Visibility.Collapsed;
             }
         }
@@ -103,14 +110,15 @@ namespace Technopark
             Page? pageView = page switch
             {
                 "Dashboard" => new Views.DashboardPage(),
-                "Projects" => new Views.ProjectsPage(),
-                "MyProjects" => new Views.ProjectsPage(),
+                "Projects" => new Views.ProjectsPage(false),
+                "MyProjects" => new Views.ProjectsPage(true),
                 "Contests" => new Views.ContestsPage(),
                 "Teams" => new Views.TeamsPage(),
                 "Users" => new Views.UsersPage(),
                 "Export" => new Views.ExportPage(),
                 "Portfolio" => new Views.PortfolioPage(),
                 "Analytics" => new Views.AnalyticsPage(),
+                "References" => new Views.ReferenceDataPage(),
                 _ => null
             };
 
@@ -147,6 +155,25 @@ namespace Technopark
             return parts.Length >= 2
                 ? $"{parts[0][0]}{parts[1][0]}"
                 : fullName.Length > 0 ? fullName[0].ToString() : "?";
+        }
+
+        private async void UserInfo_Click(object sender, MouseButtonEventArgs e)
+        {
+            using var db = new Data.AppDbContext();
+            if (CurrentSession.IsMentor)
+            {
+                var mentor = await db.MentorProfiles
+                    .FirstOrDefaultAsync(m => m.UserId == CurrentSession.UserId);
+                if (mentor != null)
+                    MainFrame.Navigate(new Views.MentorDetailsPage(mentor.Id));
+            }
+            else if (CurrentSession.IsStudent)
+            {
+                var student = await db.StudentProfiles
+                    .FirstOrDefaultAsync(s => s.UserId == CurrentSession.UserId);
+                if (student != null)
+                    MainFrame.Navigate(new Views.StudentDetailsPage(student.Id));
+            }
         }
     }
 }
