@@ -35,6 +35,8 @@ namespace Technopark
                         Views.TeamsPage => "Команды",
                         Views.ExportPage => "Экспорт",
                         Views.PortfolioPage => "Моё портфолио",
+                        Views.AnalyticsPage => "Аналитика",
+                        Views.ReferenceDataPage => "Справочники",
                         Views.ProjectDetailsPage => "Информация о проекте",
                         Views.MentorDetailsPage => "Профиль наставника",
                         Views.StudentDetailsPage => "Профиль участника",
@@ -78,6 +80,7 @@ namespace Technopark
                 SectionAdmin.Visibility = Visibility.Collapsed;
                 BtnUsers.Visibility = Visibility.Collapsed;
                 BtnAnalytics.Visibility = Visibility.Collapsed;
+                BtnReferences.Visibility = Visibility.Collapsed;
                 SectionPortfolio.Visibility = Visibility.Collapsed;
                 BtnPortfolio.Visibility = Visibility.Collapsed;
                 // SectionExport и BtnExport видны для Mentor
@@ -91,6 +94,7 @@ namespace Technopark
                 SectionAdmin.Visibility = Visibility.Collapsed;
                 BtnUsers.Visibility = Visibility.Collapsed;
                 BtnAnalytics.Visibility = Visibility.Collapsed;
+                BtnReferences.Visibility = Visibility.Collapsed;
                 BtnTeams.Visibility = Visibility.Collapsed;
             }
         }
@@ -114,6 +118,7 @@ namespace Technopark
                 "Export" => new Views.ExportPage(),
                 "Portfolio" => new Views.PortfolioPage(),
                 "Analytics" => new Views.AnalyticsPage(),
+                "References" => new Views.ReferenceDataPage(),
                 _ => null
             };
 

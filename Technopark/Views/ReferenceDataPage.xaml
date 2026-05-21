@@ -1,0 +1,220 @@
+﻿<Page x:Class="Technopark.Views.ReferenceDataPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      Background="#F9FAFB">
+
+    <Page.Resources>
+        <!-- Общий стиль DataGrid для всех вкладок -->
+        <Style x:Key="RefGrid" TargetType="DataGrid">
+            <Setter Property="AutoGenerateColumns" Value="False"/>
+            <Setter Property="IsReadOnly" Value="True"/>
+            <Setter Property="GridLinesVisibility" Value="Horizontal"/>
+            <Setter Property="HeadersVisibility" Value="Column"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="RowHeight" Value="40"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="CanUserResizeRows" Value="False"/>
+            <Setter Property="SelectionMode" Value="Single"/>
+        </Style>
+    </Page.Resources>
+
+    <Grid Margin="28,24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <Grid Grid.Row="0" Margin="0,0,0,16">
+            <TextBlock Text="Управление справочниками"
+                       FontSize="13" Foreground="#6B7280"
+                       VerticalAlignment="Center"/>
+            <Button x:Name="AddBtn" Content="+ Добавить запись"
+                    HorizontalAlignment="Right"
+                    Height="36" Padding="14,0"
+                    Background="#534AB7" Foreground="White"
+                    BorderThickness="0" FontSize="13" Cursor="Hand"
+                    Click="AddBtn_Click"/>
+        </Grid>
+
+        <!-- Tabs -->
+        <Border Grid.Row="1" Background="White" CornerRadius="8"
+                BorderBrush="#E5E7EB" BorderThickness="1">
+            <TabControl x:Name="MainTabs" BorderThickness="0"
+                        Background="Transparent" Padding="0">
+
+                <!-- Направления -->
+                <TabItem Header="Направления">
+                    <DataGrid x:Name="DirectionsGrid" Style="{StaticResource RefGrid}">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Название"
+                                Binding="{Binding Name}" Width="*"/>
+                            <DataGridTextColumn Header="Описание"
+                                Binding="{Binding Description}" Width="2*"/>
+                            <DataGridTextColumn Header="Использований"
+                                Binding="{Binding UsageCount}" Width="130"/>
+                            <DataGridTemplateColumn Width="80">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal">
+                                            <Button Content="✏️" Width="30" Height="28"
+                                                    Background="Transparent" BorderThickness="0"
+                                                    Cursor="Hand" Tag="{Binding Id}"
+                                                    Click="EditDirection_Click"/>
+                                            <Button Content="🗑️" Width="30" Height="28"
+                                                    Background="Transparent" BorderThickness="0"
+                                                    Cursor="Hand" Tag="{Binding Id}"
+                                                    Click="DeleteDirection_Click"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </TabItem>
+
+                <!-- Статусы проектов -->
+                <TabItem Header="Статусы проектов">
+                    <DataGrid x:Name="StatusesGrid" Style="{StaticResource RefGrid}">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Название"
+                                Binding="{Binding Name}" Width="*"/>
+                            <DataGridTextColumn Header="Использований"
+                                Binding="{Binding UsageCount}" Width="130"/>
+                            <DataGridTemplateColumn Width="80">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal">
+                                            <Button Content="✏️" Width="30" Height="28"
+                                                    Background="Transparent" BorderThickness="0"
+                                                    Cursor="Hand" Tag="{Binding Id}"
+                                                    Click="EditStatus_Click"/>
+                                            <Button Content="🗑️" Width="30" Height="28"
+                                                    Background="Transparent" BorderThickness="0"
+                                                    Cursor="Hand" Tag="{Binding Id}"
+                                                    Click="DeleteStatus_Click"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </TabItem>
+
+                <!-- Уровни конкурсов -->
+                <TabItem Header="Уровни конкурсов">
+                    <DataGrid x:Name="LevelsGrid" Style="{StaticResource RefGrid}">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Название"
+                                Binding="{Binding Name}" Width="*"/>
+                            <DataGridTextColumn Header="Использований"
+                                Binding="{Binding UsageCount}" Width="130"/>
+                            <DataGridTemplateColumn Width="80">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal">
+                                            <Button Content="✏️" Width="30" Height="28"
+                                                    Background="Transparent" BorderThickness="0"
+                                                    Cursor="Hand" Tag="{Binding Id}"
+                                                    Click="EditLevel_Click"/>
+                                            <Button Content="🗑️" Width="30" Height="28"
+                                                    Background="Transparent" BorderThickness="0"
+                                                    Cursor="Hand" Tag="{Binding Id}"
+                                                    Click="DeleteLevel_Click"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </TabItem>
+
+                <!-- Результаты участия -->
+                <TabItem Header="Результаты участия">
+                    <DataGrid x:Name="ResultsGrid" Style="{StaticResource RefGrid}">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Название"
+                                Binding="{Binding Name}" Width="*"/>
+                            <DataGridTextColumn Header="Использований"
+                                Binding="{Binding UsageCount}" Width="130"/>
+                            <DataGridTemplateColumn Width="80">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal">
+                                            <Button Content="✏️" Width="30" Height="28"
+                                                    Background="Transparent" BorderThickness="0"
+                                                    Cursor="Hand" Tag="{Binding Id}"
+                                                    Click="EditResult_Click"/>
+                                            <Button Content="🗑️" Width="30" Height="28"
+                                                    Background="Transparent" BorderThickness="0"
+                                                    Cursor="Hand" Tag="{Binding Id}"
+                                                    Click="DeleteResult_Click"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </TabItem>
+
+                <!-- Проектные роли -->
+                <TabItem Header="Проектные роли">
+                    <DataGrid x:Name="RolesGrid" Style="{StaticResource RefGrid}">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Название"
+                                Binding="{Binding Name}" Width="*"/>
+                            <DataGridTextColumn Header="Использований"
+                                Binding="{Binding UsageCount}" Width="130"/>
+                            <DataGridTemplateColumn Width="80">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal">
+                                            <Button Content="✏️" Width="30" Height="28"
+                                                    Background="Transparent" BorderThickness="0"
+                                                    Cursor="Hand" Tag="{Binding Id}"
+                                                    Click="EditRole_Click"/>
+                                            <Button Content="🗑️" Width="30" Height="28"
+                                                    Background="Transparent" BorderThickness="0"
+                                                    Cursor="Hand" Tag="{Binding Id}"
+                                                    Click="DeleteRole_Click"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </TabItem>
+
+                <!-- Типы материалов -->
+                <TabItem Header="Типы материалов">
+                    <DataGrid x:Name="MaterialTypesGrid" Style="{StaticResource RefGrid}">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Название"
+                                Binding="{Binding Name}" Width="*"/>
+                            <DataGridTextColumn Header="Использований"
+                                Binding="{Binding UsageCount}" Width="130"/>
+                            <DataGridTemplateColumn Width="80">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal">
+                                            <Button Content="✏️" Width="30" Height="28"
+                                                    Background="Transparent" BorderThickness="0"
+                                                    Cursor="Hand" Tag="{Binding Id}"
+                                                    Click="EditMaterialType_Click"/>
+                                            <Button Content="🗑️" Width="30" Height="28"
+                                                    Background="Transparent" BorderThickness="0"
+                                                    Cursor="Hand" Tag="{Binding Id}"
+                                                    Click="DeleteMaterialType_Click"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </TabItem>
+
+            </TabControl>
+        </Border>
+    </Grid>
+</Page>
