@@ -114,22 +114,40 @@ namespace Technopark.Views
 
         private async void DeleteTeam_Click(object sender, RoutedEventArgs e)
         {
-            using var db = new AppDbContext();
             if (sender is not Button btn || btn.Tag is not int teamId) return;
             if (!CurrentSession.IsAdmin) return;
 
-            var team = await db.Teams.FindAsync(teamId);
-            if (team == null) return;
+            try
+            {
+                using var db = new AppDbContext();
+                var team = await db.Teams.FindAsync(teamId);
+                if (team == null)
+                {
+                    MessageBox.Show("Команда не найдена. Возможно, она уже была удалена.",
+                        "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    await LoadTeamsAsync();
+                    return;
+                }
 
-            var result = MessageBox.Show(
-                $"Удалить команду «{team.Name}»?\nВсе связанные проекты потеряют привязку к команде.",
-                "Подтверждение", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+                var result = MessageBox.Show(
+                    $"Удалить команду «{team.Name}»?\n\nВместе с командой будут удалены все её проекты и связи с участниками.",
+                    "Подтверждение удаления", MessageBoxButton.YesNo, MessageBoxImage.Warning);
 
-            if (result != MessageBoxResult.Yes) return;
+                if (result != MessageBoxResult.Yes) return;
 
-            db.Teams.Remove(team);
-            await db.SaveChangesAsync();
-            await LoadTeamsAsync();
+                db.Teams.Remove(team);
+                await db.SaveChangesAsync();
+
+                MessageBox.Show($"Команда «{team.Name}» успешно удалена.",
+                    "Готово", MessageBoxButton.OK, MessageBoxImage.Information);
+
+                await LoadTeamsAsync();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Не удалось удалить команду:\n\n{ex.Message}",
+                    "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
         private void TeamsGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {

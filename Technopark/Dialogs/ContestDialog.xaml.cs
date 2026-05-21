@@ -95,11 +95,17 @@ namespace Technopark.Dialogs
 
         private void AddParticipationBtn_Click(object sender, RoutedEventArgs e)
         {
-            if (ProjectBox.SelectedValue is not int projectId) return;
+            if (ProjectBox.SelectedValue is not int projectId)
+            {
+                MessageBox.Show("Выберите проект для добавления.",
+                    "Не заполнено поле", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
 
             if (_participations.Any(p => p.ProjectId == projectId))
             {
-                MessageBox.Show("Этот проект уже добавлен");
+                MessageBox.Show("Этот проект уже добавлен в участники конкурса.",
+                    "Дубликат", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
@@ -118,66 +124,84 @@ namespace Technopark.Dialogs
                 LevelBox.SelectedValue == null ||
                 DatePicker.SelectedDate == null)
             {
-                MessageBox.Show("Заполните все обязательные поля");
+                MessageBox.Show("Заполните все обязательные поля (отмечены звёздочкой).",
+                    "Не заполнены поля", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
-            using var db = new AppDbContext();
-
-            int contestId;
-            if (_editContestId == null)
+            try
             {
-                var contest = new Contest
+                using var db = new AppDbContext();
+                bool isNew = _editContestId == null;
+                int contestId;
+
+                if (isNew)
                 {
-                    Name = NameBox.Text.Trim(),
-                    Organizer = OrganizerBox.Text.Trim(),
-                    LevelId = (int)LevelBox.SelectedValue,
-                    Date = DatePicker.SelectedDate.Value
-                };
-                db.Contests.Add(contest);
+                    var contest = new Contest
+                    {
+                        Name = NameBox.Text.Trim(),
+                        Organizer = OrganizerBox.Text.Trim(),
+                        LevelId = (int)LevelBox.SelectedValue,
+                        Date = DatePicker.SelectedDate.Value
+                    };
+                    db.Contests.Add(contest);
+                    await db.SaveChangesAsync();
+                    contestId = contest.Id;
+                }
+                else
+                {
+                    contestId = _editContestId!.Value;
+
+                    var existing = await db.Contests.FindAsync(contestId);
+                    if (existing == null)
+                    {
+                        MessageBox.Show("Конкурс не найден. Возможно, он был удалён.",
+                            "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        DialogResult = false;
+                        Close();
+                        return;
+                    }
+
+                    existing.Name = NameBox.Text.Trim();
+                    existing.Organizer = OrganizerBox.Text.Trim();
+                    existing.LevelId = (int)LevelBox.SelectedValue;
+                    existing.Date = DatePicker.SelectedDate.Value;
+                    await db.SaveChangesAsync();
+
+                    // Удаляем старые участия
+                    var old = await db.ContestParticipations
+                        .Where(cp => cp.ContestId == contestId)
+                        .ToListAsync();
+                    db.ContestParticipations.RemoveRange(old);
+                    await db.SaveChangesAsync();
+                }
+
+                // Добавляем актуальный список участий
+                foreach (var row in _participations)
+                {
+                    db.ContestParticipations.Add(new ContestParticipation
+                    {
+                        ContestId = contestId,
+                        ProjectId = row.ProjectId,
+                        ResultId = row.ResultId,
+                        Place = row.Place,
+                        ApplicationDate = DateTime.Today
+                    });
+                }
                 await db.SaveChangesAsync();
-                contestId = contest.Id;
+
+                MessageBox.Show(
+                    isNew ? "Конкурс успешно создан." : "Конкурс успешно обновлён.",
+                    "Готово", MessageBoxButton.OK, MessageBoxImage.Information);
+
+                DialogResult = true;
+                Close();
             }
-            else
+            catch (Exception ex)
             {
-                contestId = _editContestId.Value;
-
-                // Создаём "заглушку" с Id и говорим EF обновить только нужные поля
-                var contest = new Contest
-                {
-                    Id = contestId,
-                    Name = NameBox.Text.Trim(),
-                    Organizer = OrganizerBox.Text.Trim(),
-                    LevelId = (int)LevelBox.SelectedValue,
-                    Date = DatePicker.SelectedDate.Value
-                };
-                db.Entry(contest).State = EntityState.Modified;
-                await db.SaveChangesAsync();
-
-                // Удаляем старые участия
-                var old = await db.ContestParticipations
-                    .Where(cp => cp.ContestId == contestId)
-                    .ToListAsync();
-                db.ContestParticipations.RemoveRange(old);
-                await db.SaveChangesAsync();
+                MessageBox.Show($"Не удалось сохранить конкурс:\n\n{ex.Message}",
+                    "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
             }
-
-            // Добавляем актуальный список участий
-            foreach (var row in _participations)
-            {
-                db.ContestParticipations.Add(new ContestParticipation
-                {
-                    ContestId = contestId,
-                    ProjectId = row.ProjectId,
-                    ResultId = row.ResultId,
-                    Place = row.Place,
-                    ApplicationDate = DateTime.Today
-                });
-            }
-            await db.SaveChangesAsync();
-
-            DialogResult = true;
-            Close();
         }
 
         private void CancelBtn_Click(object sender, RoutedEventArgs e)

@@ -97,15 +97,45 @@ namespace Technopark.Views
 
         private async void DeleteBtn_Click(object sender, RoutedEventArgs e)
         {
-            using var db = new AppDbContext();
-            if (_student == null) return;
-            var result = MessageBox.Show($"Удалить участника «{_student.FullName}»?",
-                "Подтверждение", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+            if (_student == null || !CurrentSession.IsAdmin) return;
+
+            if (_student.UserId == CurrentSession.UserId)
+            {
+                MessageBox.Show("Нельзя удалить собственный профиль.",
+                    "Действие запрещено", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            var result = MessageBox.Show(
+                $"Удалить участника «{_student.FullName}»?\n\nВместе с участником будут удалены его учётная запись и все его записи в составах команд.",
+                "Подтверждение удаления", MessageBoxButton.YesNo, MessageBoxImage.Warning);
             if (result != MessageBoxResult.Yes) return;
-            var user = await db.Users.FindAsync(_student.UserId);
-            if (user != null) db.Users.Remove(user);
-            await db.SaveChangesAsync();
-            if (NavigationService?.CanGoBack == true) NavigationService.GoBack();
+
+            try
+            {
+                using var db = new AppDbContext();
+                var user = await db.Users.FindAsync(_student.UserId);
+                if (user == null)
+                {
+                    MessageBox.Show("Пользователь не найден. Возможно, участник уже удалён.",
+                        "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    if (NavigationService?.CanGoBack == true) NavigationService.GoBack();
+                    return;
+                }
+
+                db.Users.Remove(user);
+                await db.SaveChangesAsync();
+
+                MessageBox.Show($"Участник «{_student.FullName}» успешно удалён.",
+                    "Готово", MessageBoxButton.OK, MessageBoxImage.Information);
+
+                if (NavigationService?.CanGoBack == true) NavigationService.GoBack();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Не удалось удалить участника:\n\n{ex.Message}",
+                    "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         private void TeamLink_Click(object sender, MouseButtonEventArgs e)

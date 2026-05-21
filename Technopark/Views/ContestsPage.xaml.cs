@@ -149,22 +149,39 @@ namespace Technopark.Views
 
         private async void DeleteContest_Click(object sender, RoutedEventArgs e)
         {
-            using var db = new AppDbContext();
             if (sender is not Button btn || btn.Tag is not ContestViewModel vm) return;
             if (!CurrentSession.IsAdmin) return;
 
             var result = MessageBox.Show(
-                $"Удалить конкурс «{vm.Name}»?",
-                "Подтверждение", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+                $"Удалить конкурс «{vm.Name}»?\n\nВместе с конкурсом будут удалены все записи об участии проектов в нём.",
+                "Подтверждение удаления", MessageBoxButton.YesNo, MessageBoxImage.Warning);
 
             if (result != MessageBoxResult.Yes) return;
 
-            var contest = await db.Contests.FindAsync(vm.Contest.Id);
-            if (contest != null)
+            try
             {
+                using var db = new AppDbContext();
+                var contest = await db.Contests.FindAsync(vm.Contest.Id);
+                if (contest == null)
+                {
+                    MessageBox.Show("Конкурс не найден. Возможно, он уже был удалён.",
+                        "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    await LoadContestsAsync();
+                    return;
+                }
+
                 db.Contests.Remove(contest);
                 await db.SaveChangesAsync();
+
+                MessageBox.Show($"Конкурс «{contest.Name}» успешно удалён.",
+                    "Готово", MessageBoxButton.OK, MessageBoxImage.Information);
+
                 await LoadContestsAsync();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Не удалось удалить конкурс:\n\n{ex.Message}",
+                    "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
         private void ContestsGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)

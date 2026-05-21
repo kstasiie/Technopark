@@ -89,82 +89,117 @@ namespace Technopark.Dialogs
                 string.IsNullOrWhiteSpace(FirstNameBox.Text) ||
                 string.IsNullOrWhiteSpace(LoginBox.Text))
             {
-                MessageBox.Show("Заполните обязательные поля (Фамилия, Имя, Логин)");
+                MessageBox.Show("Заполните обязательные поля: Фамилия, Имя, Логин.",
+                    "Не заполнены поля", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
             var role = (RoleBox.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "Student";
 
-            using var db = new AppDbContext();
-
-            if (_editUserId == null)
+            // Защита от смены собственной роли (двойная защита — UI уже блокирует)
+            if (_editUserId == CurrentSession.UserId && CurrentSession.IsAdmin
+                && role != CurrentSession.Role)
             {
-                if (string.IsNullOrWhiteSpace(PasswordBox.Password))
-                {
-                    MessageBox.Show("Введите пароль");
-                    return;
-                }
-
-                // Проверка уникальности логина
-                if (await db.Users.AnyAsync(u => u.Login == LoginBox.Text.Trim()))
-                {
-                    MessageBox.Show("Пользователь с таким логином уже существует");
-                    return;
-                }
-
-                var salt = AuthService.GenerateSaltPublic();
-                var user = new User
-                {
-                    Login = LoginBox.Text.Trim(),
-                    Salt = salt,
-                    PasswordHash = AuthService.HashPasswordPublic(PasswordBox.Password, salt),
-                    Role = role,
-                    IsActive = true
-                };
-                db.Users.Add(user);
-                await db.SaveChangesAsync();
-
-                await CreateProfileAsync(db, user.Id, role);
-                await db.SaveChangesAsync();
+                MessageBox.Show("Нельзя изменить собственную роль.",
+                    "Действие запрещено", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
             }
-            else
+
+            try
             {
-                var user = await db.Users
-                    .Include(u => u.MentorProfile)
-                    .Include(u => u.StudentProfile)
-                    .FirstOrDefaultAsync(u => u.Id == _editUserId);
+                using var db = new AppDbContext();
+                bool isNew = _editUserId == null;
 
-                if (user == null) return;
-
-                // Проверка уникальности логина при изменении
-                var newLogin = LoginBox.Text.Trim();
-                if (user.Login != newLogin &&
-                    await db.Users.AnyAsync(u => u.Login == newLogin))
+                if (isNew)
                 {
-                    MessageBox.Show("Пользователь с таким логином уже существует");
-                    return;
-                }
+                    if (string.IsNullOrWhiteSpace(PasswordBox.Password))
+                    {
+                        MessageBox.Show("Введите пароль для нового пользователя.",
+                            "Не заполнено поле", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        return;
+                    }
 
-                user.Login = newLogin;
+                    // Проверка уникальности логина
+                    if (await db.Users.AnyAsync(u => u.Login == LoginBox.Text.Trim()))
+                    {
+                        MessageBox.Show("Пользователь с таким логином уже существует. Выберите другой логин.",
+                            "Логин занят", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        LoginBox.Focus();
+                        return;
+                    }
 
-                bool isOwnProfile = user.Id == CurrentSession.UserId;
-                bool canChangeRole = CurrentSession.IsAdmin && !isOwnProfile;
-                if (canChangeRole)
-                    user.Role = role;
-
-                if (!string.IsNullOrWhiteSpace(PasswordBox.Password))
-                {
                     var salt = AuthService.GenerateSaltPublic();
-                    user.Salt = salt;
-                    user.PasswordHash = AuthService.HashPasswordPublic(PasswordBox.Password, salt);
+                    var user = new User
+                    {
+                        Login = LoginBox.Text.Trim(),
+                        Salt = salt,
+                        PasswordHash = AuthService.HashPasswordPublic(PasswordBox.Password, salt),
+                        Role = role,
+                        IsActive = true
+                    };
+                    db.Users.Add(user);
+                    await db.SaveChangesAsync();
+
+                    await CreateProfileAsync(db, user.Id, role);
+                    await db.SaveChangesAsync();
+                }
+                else
+                {
+                    var user = await db.Users
+                        .Include(u => u.MentorProfile)
+                        .Include(u => u.StudentProfile)
+                        .FirstOrDefaultAsync(u => u.Id == _editUserId);
+
+                    if (user == null)
+                    {
+                        MessageBox.Show("Пользователь не найден. Возможно, он был удалён.",
+                            "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        DialogResult = false;
+                        Close();
+                        return;
+                    }
+
+                    // Проверка уникальности логина при изменении
+                    var newLogin = LoginBox.Text.Trim();
+                    if (user.Login != newLogin &&
+                        await db.Users.AnyAsync(u => u.Login == newLogin))
+                    {
+                        MessageBox.Show("Пользователь с таким логином уже существует. Выберите другой логин.",
+                            "Логин занят", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        LoginBox.Focus();
+                        return;
+                    }
+
+                    user.Login = newLogin;
+
+                    bool isOwnProfile = user.Id == CurrentSession.UserId;
+                    bool canChangeRole = CurrentSession.IsAdmin && !isOwnProfile;
+                    if (canChangeRole)
+                        user.Role = role;
+
+                    if (!string.IsNullOrWhiteSpace(PasswordBox.Password))
+                    {
+                        var salt = AuthService.GenerateSaltPublic();
+                        user.Salt = salt;
+                        user.PasswordHash = AuthService.HashPasswordPublic(PasswordBox.Password, salt);
+                    }
+
+                    await UpdateProfileAsync(db, user);
+                    await db.SaveChangesAsync();
                 }
 
-                await UpdateProfileAsync(db, user);
-                await db.SaveChangesAsync();
-            }
+                MessageBox.Show(
+                    isNew ? "Пользователь успешно создан." : "Данные пользователя успешно обновлены.",
+                    "Готово", MessageBoxButton.OK, MessageBoxImage.Information);
 
-            DialogResult = true;
-            Close();
+                DialogResult = true;
+                Close();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Не удалось сохранить пользователя:\n\n{ex.Message}",
+                    "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         private async Task CreateProfileAsync(AppDbContext db, int userId, string role)

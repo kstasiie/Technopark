@@ -81,12 +81,23 @@ namespace Technopark.Dialogs
 
         private void AddMemberBtn_Click(object sender, RoutedEventArgs e)
         {
-            if (StudentBox.SelectedValue is not int studentId) return;
-            if (RoleBox.SelectedValue is not int roleId) return;
+            if (StudentBox.SelectedValue is not int studentId)
+            {
+                MessageBox.Show("Выберите участника.",
+                    "Не заполнено поле", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+            if (RoleBox.SelectedValue is not int roleId)
+            {
+                MessageBox.Show("Выберите роль участника.",
+                    "Не заполнено поле", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
 
             if (_members.Any(m => m.StudentId == studentId))
             {
-                MessageBox.Show("Этот участник уже добавлен в команду");
+                MessageBox.Show("Этот участник уже добавлен в команду.",
+                    "Дубликат", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
@@ -115,76 +126,93 @@ namespace Technopark.Dialogs
         {
             if (string.IsNullOrWhiteSpace(NameBox.Text))
             {
-                MessageBox.Show("Введите название команды");
+                MessageBox.Show("Введите название команды.",
+                    "Не заполнено поле", MessageBoxButton.OK, MessageBoxImage.Warning);
+                NameBox.Focus();
                 return;
             }
 
             if (!int.TryParse(YearBox.Text, out int year) || year < 2000 || year > 2100)
             {
-                MessageBox.Show("Введите корректный год (например, 2025)");
+                MessageBox.Show("Введите корректный год формирования (от 2000 до 2100).",
+                    "Некорректный год", MessageBoxButton.OK, MessageBoxImage.Warning);
+                YearBox.Focus();
                 return;
             }
 
-            using var db = new AppDbContext();
-
-            if (_editTeamId == null)
+            try
             {
-                var team = new Team
-                {
-                    Name = NameBox.Text.Trim(),
-                    FormationYear = year
-                };
-                db.Teams.Add(team);
-                await db.SaveChangesAsync();
+                using var db = new AppDbContext();
+                bool isNew = _editTeamId == null;
 
-                foreach (var row in _members)
+                if (isNew)
                 {
-                    db.TeamMembers.Add(new TeamMember
+                    var team = new Team
                     {
-                        TeamId = team.Id,
-                        StudentId = row.StudentId,
-                        RoleId = row.RoleId,
-                        InclusionDate = DateTime.Today
-                    });
+                        Name = NameBox.Text.Trim(),
+                        FormationYear = year
+                    };
+                    db.Teams.Add(team);
+                    await db.SaveChangesAsync();
+
+                    foreach (var row in _members)
+                    {
+                        db.TeamMembers.Add(new TeamMember
+                        {
+                            TeamId = team.Id,
+                            StudentId = row.StudentId,
+                            RoleId = row.RoleId,
+                            InclusionDate = DateTime.Today
+                        });
+                    }
+                    await db.SaveChangesAsync();
                 }
-                await db.SaveChangesAsync();
+                else
+                {
+                    var team = await db.Teams
+                        .Include(t => t.Members)
+                        .FirstOrDefaultAsync(t => t.Id == _editTeamId);
+
+                    if (team == null)
+                    {
+                        MessageBox.Show("Команда не найдена. Возможно, она была удалена.",
+                            "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        DialogResult = false;
+                        Close();
+                        return;
+                    }
+
+                    team.Name = NameBox.Text.Trim();
+                    team.FormationYear = year;
+
+                    db.TeamMembers.RemoveRange(team.Members);
+                    await db.SaveChangesAsync();
+
+                    foreach (var row in _members)
+                    {
+                        db.TeamMembers.Add(new TeamMember
+                        {
+                            TeamId = team.Id,
+                            StudentId = row.StudentId,
+                            RoleId = row.RoleId,
+                            InclusionDate = DateTime.Today
+                        });
+                    }
+                    await db.SaveChangesAsync();
+                }
+
+                MessageBox.Show(
+                    isNew ? "Команда успешно создана." : "Команда успешно обновлена.",
+                    "Готово", MessageBoxButton.OK, MessageBoxImage.Information);
+
+                DialogResult = true;
+                Close();
             }
-            else
+            catch (Exception ex)
             {
-                // Загружаем команду свежим запросом в наш контекст
-                var team = await db.Teams
-                    .Include(t => t.Members)
-                    .FirstOrDefaultAsync(t => t.Id == _editTeamId);
-
-                if (team == null)
-                {
-                    MessageBox.Show("Команда не найдена");
-                    return;
-                }
-
-                team.Name = NameBox.Text.Trim();
-                team.FormationYear = year;
-
-                // Удаляем всех старых участников
-                db.TeamMembers.RemoveRange(team.Members);
-                await db.SaveChangesAsync();
-
-                // Добавляем новых
-                foreach (var row in _members)
-                {
-                    db.TeamMembers.Add(new TeamMember
-                    {
-                        TeamId = team.Id,
-                        StudentId = row.StudentId,
-                        RoleId = row.RoleId,
-                        InclusionDate = DateTime.Today
-                    });
-                }
-                await db.SaveChangesAsync();
+                MessageBox.Show($"Не удалось сохранить команду:\n\n{ex.Message}",
+                    "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
             }
-
-            DialogResult = true;
-            Close();
         }
 
         private void CancelBtn_Click(object sender, RoutedEventArgs e)

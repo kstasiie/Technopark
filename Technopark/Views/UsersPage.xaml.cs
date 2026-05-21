@@ -150,27 +150,47 @@ namespace Technopark.Views
 
         private async void DeleteUser_Click(object sender, RoutedEventArgs e)
         {
-            using var db = new AppDbContext();
             if (sender is not Button btn || btn.Tag is not int userId) return;
+            if (!CurrentSession.IsAdmin) return;
 
             if (userId == CurrentSession.UserId)
             {
-                MessageBox.Show("Нельзя удалить текущего пользователя");
+                MessageBox.Show("Нельзя удалить собственную учётную запись.",
+                    "Действие запрещено", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
-            var user = await db.Users.FindAsync(userId);
-            if (user == null) return;
+            try
+            {
+                using var db = new AppDbContext();
+                var user = await db.Users.FindAsync(userId);
+                if (user == null)
+                {
+                    MessageBox.Show("Пользователь не найден. Возможно, он уже был удалён.",
+                        "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    await LoadUsersAsync();
+                    return;
+                }
 
-            var result = MessageBox.Show(
-                $"Удалить пользователя «{user.Login}»?",
-                "Подтверждение", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+                var result = MessageBox.Show(
+                    $"Удалить пользователя «{user.Login}»?\n\nВместе с пользователем будут удалены его профиль, проекты (если он наставник) и членство в командах (если он участник).",
+                    "Подтверждение удаления", MessageBoxButton.YesNo, MessageBoxImage.Warning);
 
-            if (result != MessageBoxResult.Yes) return;
+                if (result != MessageBoxResult.Yes) return;
 
-            db.Users.Remove(user);
-            await db.SaveChangesAsync();
-            await LoadUsersAsync();
+                db.Users.Remove(user);
+                await db.SaveChangesAsync();
+
+                MessageBox.Show($"Пользователь «{user.Login}» успешно удалён.",
+                    "Готово", MessageBoxButton.OK, MessageBoxImage.Information);
+
+                await LoadUsersAsync();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Не удалось удалить пользователя:\n\n{ex.Message}",
+                    "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
         private async void UsersGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {

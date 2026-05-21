@@ -57,14 +57,38 @@ namespace Technopark.Views
 
         private async void DeleteBtn_Click(object sender, RoutedEventArgs e)
         {
-            using var db = new AppDbContext();
-            if (_contest == null) return;
-            var result = MessageBox.Show($"Удалить конкурс «{_contest.Name}»?",
-                "Подтверждение", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+            if (_contest == null || !CurrentSession.IsAdmin) return;
+
+            var result = MessageBox.Show(
+                $"Удалить конкурс «{_contest.Name}»?\n\nВместе с конкурсом будут удалены все записи об участии проектов в нём.",
+                "Подтверждение удаления", MessageBoxButton.YesNo, MessageBoxImage.Warning);
             if (result != MessageBoxResult.Yes) return;
-            db.Contests.Remove(_contest);
-            await db.SaveChangesAsync();
-            if (NavigationService?.CanGoBack == true) NavigationService.GoBack();
+
+            try
+            {
+                using var db = new AppDbContext();
+                var contest = await db.Contests.FirstOrDefaultAsync(c => c.Id == _contestId);
+                if (contest == null)
+                {
+                    MessageBox.Show("Конкурс не найден. Возможно, он уже был удалён.",
+                        "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    if (NavigationService?.CanGoBack == true) NavigationService.GoBack();
+                    return;
+                }
+
+                db.Contests.Remove(contest);
+                await db.SaveChangesAsync();
+
+                MessageBox.Show($"Конкурс «{contest.Name}» успешно удалён.",
+                    "Готово", MessageBoxButton.OK, MessageBoxImage.Information);
+
+                if (NavigationService?.CanGoBack == true) NavigationService.GoBack();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Не удалось удалить конкурс:\n\n{ex.Message}",
+                    "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         private void ProjectsGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)

@@ -170,22 +170,39 @@ namespace Technopark.Views
 
         private async void DeleteProject_Click(object sender, RoutedEventArgs e)
         {
-            using var db = new AppDbContext();
             if (sender is not Button btn || btn.Tag is not Project project) return;
             if (!CurrentSession.IsAdmin) return;
 
             var result = MessageBox.Show(
-                $"Удалить проект «{project.Name}»?",
-                "Подтверждение", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+                $"Удалить проект «{project.Name}»?\n\nВместе с проектом будут удалены все его материалы и записи об участии в конкурсах.",
+                "Подтверждение удаления", MessageBoxButton.YesNo, MessageBoxImage.Warning);
 
             if (result != MessageBoxResult.Yes) return;
 
-            var full = await db.Projects.FindAsync(project.Id);
-            if (full != null)
+            try
             {
+                using var db = new AppDbContext();
+                var full = await db.Projects.FindAsync(project.Id);
+                if (full == null)
+                {
+                    MessageBox.Show("Проект не найден. Возможно, он уже был удалён.",
+                        "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    await LoadProjectsAsync();
+                    return;
+                }
+
                 db.Projects.Remove(full);
                 await db.SaveChangesAsync();
+
+                MessageBox.Show($"Проект «{full.Name}» успешно удалён.",
+                    "Готово", MessageBoxButton.OK, MessageBoxImage.Information);
+
                 await LoadProjectsAsync();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Не удалось удалить проект:\n\n{ex.Message}",
+                    "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
     }

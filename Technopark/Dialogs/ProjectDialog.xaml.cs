@@ -101,31 +101,39 @@ namespace Technopark.Dialogs
         {
             if (string.IsNullOrWhiteSpace(NewTeamNameBox.Text))
             {
-                MessageBox.Show("Введите название команды");
+                MessageBox.Show("Введите название команды.",
+                    "Не заполнено поле", MessageBoxButton.OK, MessageBoxImage.Warning);
+                NewTeamNameBox.Focus();
                 return;
             }
 
-            using var db = new AppDbContext();
-            var team = new Team
+            try
             {
-                Name = NewTeamNameBox.Text.Trim(),
-                FormationYear = DateTime.Now.Year
-            };
-            db.Teams.Add(team);
-            await db.SaveChangesAsync();
+                using var db = new AppDbContext();
+                var team = new Team
+                {
+                    Name = NewTeamNameBox.Text.Trim(),
+                    FormationYear = DateTime.Now.Year
+                };
+                db.Teams.Add(team);
+                await db.SaveChangesAsync();
 
-            var teams = await db.Teams.OrderBy(t => t.Name).ToListAsync();
-            TeamBox.ItemsSource = teams;
-            TeamBox.SelectedValue = team.Id;
+                var teams = await db.Teams.OrderBy(t => t.Name).ToListAsync();
+                TeamBox.ItemsSource = teams;
+                TeamBox.SelectedValue = team.Id;
 
-            NewTeamPanel.Visibility = Visibility.Collapsed;
-            NewTeamNameBox.Text = "";
+                NewTeamPanel.Visibility = Visibility.Collapsed;
+                NewTeamNameBox.Text = "";
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Не удалось создать команду:\n\n{ex.Message}",
+                    "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         private async void SaveBtn_Click(object sender, RoutedEventArgs e)
         {
-            using var db = new AppDbContext();
-
             if (string.IsNullOrWhiteSpace(NameBox.Text) ||
                 DirectionBox.SelectedValue == null ||
                 StatusBox.SelectedValue == null ||
@@ -133,44 +141,75 @@ namespace Technopark.Dialogs
                 TeamBox.SelectedValue == null ||
                 StartDatePicker.SelectedDate == null)
             {
-                MessageBox.Show("Заполните все обязательные поля");
+                MessageBox.Show("Заполните все обязательные поля (отмечены звёздочкой).",
+                    "Не заполнены поля", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
-            if (_editProject == null)
+            if (EndDatePicker.SelectedDate != null &&
+                EndDatePicker.SelectedDate < StartDatePicker.SelectedDate)
             {
-                var project = new Project
+                MessageBox.Show("Плановая дата завершения не может быть раньше даты начала.",
+                    "Некорректные даты", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            try
+            {
+                using var db = new AppDbContext();
+                bool isNew = _editProject == null;
+
+                if (isNew)
                 {
-                    Name = NameBox.Text.Trim(),
-                    Description = DescriptionBox.Text.Trim(),
-                    DirectionId = (int)DirectionBox.SelectedValue,
-                    StatusId = (int)StatusBox.SelectedValue,
-                    MentorId = (int)MentorBox.SelectedValue,
-                    TeamId = (int)TeamBox.SelectedValue,
-                    StartDate = StartDatePicker.SelectedDate.Value,
-                    PlannedEndDate = EndDatePicker.SelectedDate
-                };
-                db.Projects.Add(project);
+                    var project = new Project
+                    {
+                        Name = NameBox.Text.Trim(),
+                        Description = DescriptionBox.Text.Trim(),
+                        DirectionId = (int)DirectionBox.SelectedValue,
+                        StatusId = (int)StatusBox.SelectedValue,
+                        MentorId = (int)MentorBox.SelectedValue,
+                        TeamId = (int)TeamBox.SelectedValue,
+                        StartDate = StartDatePicker.SelectedDate.Value,
+                        PlannedEndDate = EndDatePicker.SelectedDate
+                    };
+                    db.Projects.Add(project);
+                }
+                else
+                {
+                    var project = await db.Projects.FindAsync(_editProject!.Id);
+                    if (project == null)
+                    {
+                        MessageBox.Show("Проект не найден. Возможно, он был удалён.",
+                            "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        DialogResult = false;
+                        Close();
+                        return;
+                    }
+
+                    project.Name = NameBox.Text.Trim();
+                    project.Description = DescriptionBox.Text.Trim();
+                    project.DirectionId = (int)DirectionBox.SelectedValue;
+                    project.StatusId = (int)StatusBox.SelectedValue;
+                    project.MentorId = (int)MentorBox.SelectedValue;
+                    project.TeamId = (int)TeamBox.SelectedValue;
+                    project.StartDate = StartDatePicker.SelectedDate.Value;
+                    project.PlannedEndDate = EndDatePicker.SelectedDate;
+                }
+
+                await db.SaveChangesAsync();
+
+                MessageBox.Show(
+                    isNew ? "Проект успешно создан." : "Проект успешно обновлён.",
+                    "Готово", MessageBoxButton.OK, MessageBoxImage.Information);
+
+                DialogResult = true;
+                Close();
             }
-            else
+            catch (Exception ex)
             {
-                // Загружаем свежий проект в свой контекст
-                var project = await db.Projects.FindAsync(_editProject.Id);
-                if (project == null) return;
-
-                project.Name = NameBox.Text.Trim();
-                project.Description = DescriptionBox.Text.Trim();
-                project.DirectionId = (int)DirectionBox.SelectedValue;
-                project.StatusId = (int)StatusBox.SelectedValue;
-                project.MentorId = (int)MentorBox.SelectedValue;
-                project.TeamId = (int)TeamBox.SelectedValue;
-                project.StartDate = StartDatePicker.SelectedDate.Value;
-                project.PlannedEndDate = EndDatePicker.SelectedDate;
+                MessageBox.Show($"Не удалось сохранить проект:\n\n{ex.Message}",
+                    "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
             }
-
-            await db.SaveChangesAsync();
-            DialogResult = true;
-            Close();
         }
 
         private void CancelBtn_Click(object sender, RoutedEventArgs e)

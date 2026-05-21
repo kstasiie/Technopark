@@ -59,7 +59,8 @@ namespace Technopark.Dialogs
         {
             if (ContestBox.SelectedValue is not int contestId)
             {
-                MessageBox.Show("Выберите конкурс");
+                MessageBox.Show("Выберите конкурс.",
+                    "Не заполнено поле", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
@@ -70,25 +71,38 @@ namespace Technopark.Dialogs
             {
                 if (!int.TryParse(PlaceBox.Text.Trim(), out int p) || p < 1)
                 {
-                    MessageBox.Show("Место должно быть числом больше 0");
+                    MessageBox.Show("Место должно быть целым числом больше 0.",
+                        "Некорректное значение", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    PlaceBox.Focus();
                     return;
                 }
                 place = p;
             }
 
-            using var db = new AppDbContext();
-            db.ContestParticipations.Add(new ContestParticipation
+            try
             {
-                ProjectId = _projectId,
-                ContestId = contestId,
-                ResultId = resultId,
-                Place = place,
-                ApplicationDate = DateTime.Today
-            });
-            await db.SaveChangesAsync();
+                using var db = new AppDbContext();
+                db.ContestParticipations.Add(new ContestParticipation
+                {
+                    ProjectId = _projectId,
+                    ContestId = contestId,
+                    ResultId = resultId,
+                    Place = place,
+                    ApplicationDate = DateTime.Today
+                });
+                await db.SaveChangesAsync();
 
-            DialogResult = true;
-            Close();
+                MessageBox.Show("Проект успешно зарегистрирован на конкурс.",
+                    "Готово", MessageBoxButton.OK, MessageBoxImage.Information);
+
+                DialogResult = true;
+                Close();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Не удалось зарегистрировать проект на конкурс:\n\n{ex.Message}",
+                    "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         private void CancelBtn_Click(object sender, RoutedEventArgs e)
